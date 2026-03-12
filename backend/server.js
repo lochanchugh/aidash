@@ -67,10 +67,16 @@ async function updateMetrics() {
                 if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
                 else sysMetrics.wifi = 'None';
             });
-        } else {
-            wifi.getCurrentConnections((err, conn) => {
-                if (!err && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
-                else sysMetrics.wifi = 'None';
+        } else if (platform === 'linux') {
+            // Linux WiFi Fallback: try iwgetid first, then nmcli
+            exec("iwgetid -r || nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err, stdout) => {
+                if (!err && stdout.trim()) sysMetrics.wifi = stdout.trim();
+                else {
+                    wifi.getCurrentConnections((err2, conn) => {
+                        if (!err2 && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
+                        else sysMetrics.wifi = 'None';
+                    });
+                }
             });
         }
 
@@ -413,10 +419,17 @@ function handleFileUpload(req, res) {
 }
 
 function handleWifiScan(res) {
-    wifi.scan((err, networks) => {
-        if (err) handleJson(res, []);
-        else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
-    });
+    const platform = os.platform();
+    if (platform === 'darwin') {
+        exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s || networksetup -listallhardwareports", (err, stdout) => {
+            handleJson(res, []); 
+        });
+    } else {
+        wifi.scan((err, networks) => {
+            if (err) handleJson(res, []);
+            else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+        });
+    }
 }
 
 function handleWifiConnect(req, res) {
@@ -424,9 +437,16 @@ function handleWifiConnect(req, res) {
     req.on('end', () => {
         try {
             const { ssid, password } = JSON.parse(body);
-            wifi.connect({ ssid, password }, (err) => {
-                handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
-            });
+            const platform = os.platform();
+            if (platform === 'darwin') {
+                exec(`networksetup -setairportnetwork en0 "${ssid}" "${password}"`, (err, stdout) => {
+                    handleJson(res, { success: !err, output: stdout });
+                });
+            } else {
+                wifi.connect({ ssid, password }, (err) => {
+                    handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
+                });
+            }
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
     });
 }
