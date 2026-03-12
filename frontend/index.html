@@ -110,8 +110,14 @@
         .file-actions { opacity: 0; }
         .file-item:hover .file-actions { opacity: 1; }
 
-        .palette-item { padding: 12px; cursor: pointer; border-radius: 8px; border: 1px solid transparent; }
+        .palette-item { padding: 12px; cursor: pointer; border-radius: 8px; border: 1px solid transparent; display: block; width: 100%; text-align: left; background: transparent; color: white; }
         .palette-item:hover { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); }
+
+        /* Modal */
+        #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { width: 800px; max-height: 80vh; background: #1a1a1e; border: 1px solid var(--card-border); border-radius: 16px; display: flex; flex-direction: column; }
+        .modal-header { padding: 16px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: pre-wrap; background: #000; color: #10b981; }
     </style>
 </head>
 <body>
@@ -119,7 +125,6 @@
         <div class="left">
             <div class="item" style="font-weight: 700; color: var(--primary);">AIDASH OS</div>
             <div class="item" id="bar-date">...</div>
-            <div class="item" style="opacity: 0.5; font-size: 10px;">(Server Time)</div>
         </div>
         <div class="right">
             <div class="item" id="bar-wifi">📶 ...</div>
@@ -143,10 +148,7 @@
                 <h1 id="host-title">System Overview</h1>
                 <p id="system-uptime" style="color: var(--text-dim); font-size: 14px;">...</p>
             </div>
-            <div style="display: flex; gap: 12px;">
-                <button class="secondary" onclick="togglePalette()">⌘K Actions</button>
-                <button class="secondary" style="background: var(--danger); color: white;" onclick="logout()">Sign Out</button>
-            </div>
+            <button class="secondary" style="background: var(--danger); color: white;" onclick="logout()">Sign Out</button>
         </header>
 
         <div class="stats-strip">
@@ -180,29 +182,53 @@
 
         <div class="grid" style="grid-template-columns: 1fr 1fr;">
             <section class="glass-card">
-                <h3>Hardware & Network</h3>
-                <div style="margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
-                        <span style="color: var(--text-dim);">Wi-Fi Connection</span>
-                        <button class="secondary" style="padding: 4px 10px; font-size: 11px;" onclick="scanWifi()">Refresh Scan</button>
-                    </div>
-                    <select id="wifi-list" style="margin-bottom: 12px;">
-                        <option value="">Choose Network...</option>
-                    </select>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="password" id="wifi-pass" placeholder="Network Password" style="padding: 8px 12px; font-size: 12px;">
-                        <button onclick="connectWifi()" style="padding: 8px 16px;">Connect</button>
-                    </div>
-                    <div id="wifi-status" style="margin-top: 12px; font-size: 11px; color: var(--text-dim);"></div>
+                <h3>Quick System Actions</h3>
+                <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 16px;">Press ⌘K or Ctrl+K anywhere to search.</p>
+                <div id="action-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button class="secondary" onclick="execCmd('ls -lah')">List Files</button>
+                    <button class="secondary" onclick="execCmd('df -h')">Disk Status</button>
+                    <button class="secondary" onclick="execCmd('ps aux')">All Threads</button>
+                    <button class="secondary" onclick="execCmd('uptime')">Uptime</button>
+                    <button class="secondary" onclick="execCmd('free -m')">Memory Info</button>
+                    <button class="secondary" onclick="execCmd('lsblk')">Block Devices</button>
                 </div>
             </section>
             
             <section class="glass-card">
                 <h3>Node.js Ecosystem</h3>
-                <table>
+                <table style="margin-top: 0;">
                     <thead><tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>PROCESS</th></tr></thead>
                     <tbody id="proc-list"></tbody>
                 </table>
+            </section>
+        </div>
+
+        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+            <section class="glass-card" id="gemini-section" style="display: none;">
+                <h3>Gemini CLI Interface</h3>
+                <div id="gemini-chat" class="chat-area" style="height: 200px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; padding: 12px; font-family: monospace; font-size: 12px;"></div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="gemini-input" placeholder="Enter prompt for Gemini CLI..." onkeyup="if(event.key==='Enter') runGemini()">
+                    <button onclick="runGemini()">Execute</button>
+                </div>
+            </section>
+
+            <section class="glass-card">
+                <h3>Network Management</h3>
+                <div style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
+                        <span style="color: var(--text-dim);">Wi-Fi Networks</span>
+                        <button class="secondary" style="padding: 4px 10px; font-size: 11px;" onclick="scanWifi()">Scan</button>
+                    </div>
+                    <select id="wifi-list" style="margin-bottom: 12px;">
+                        <option value="">Choose Network...</option>
+                    </select>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="password" id="wifi-pass" placeholder="Password" style="padding: 8px 12px; font-size: 12px;">
+                        <button onclick="connectWifi()" style="padding: 8px 16px;">Connect</button>
+                    </div>
+                    <div id="wifi-status" style="margin-top: 12px; font-size: 11px; color: var(--text-dim);"></div>
+                </div>
             </section>
         </div>
 
@@ -231,7 +257,7 @@
 
         <div class="grid" style="grid-template-columns: 1fr 1fr;">
             <section class="glass-card">
-                <h3>Service Controls</h3>
+                <h3>Service Monitoring</h3>
                 <div id="svc-links"></div>
             </section>
             <section class="glass-card">
@@ -250,10 +276,10 @@
             </section>
 
             <section class="glass-card">
-                <h3>AI Diagnostic Assistant</h3>
+                <h3>Diagnostic Assistant</h3>
                 <div id="chat-box" class="chat-area"></div>
                 <div style="display: flex; gap: 8px; margin-top: 16px;">
-                    <input type="text" id="chat-input" placeholder="Ask about the system or current file..." onkeyup="if(event.key==='Enter') askAi()">
+                    <input type="text" id="chat-input" placeholder="Ask about system load..." onkeyup="if(event.key==='Enter') askAi()">
                     <button onclick="askAi()">Query</button>
                 </div>
             </section>
@@ -261,22 +287,33 @@
     </div>
 
     <!-- Command Palette Overlay -->
-    <div id="palette" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 999; display: flex; align-items: flex-start; justify-content: center; padding-top: 100px;">
-        <div class="glass-card" style="width: 600px; background: #1a1a1e; border-color: var(--primary);">
-            <input type="text" id="pal-input" placeholder="Quick search commands..." style="font-size: 18px; margin-bottom: 12px;">
-            <div id="pal-items" style="display: flex; flex-direction: column; gap: 4px;">
-                <div class="palette-item" onclick="execCmd('ls -lah')">List Files (Detailed)</div>
-                <div class="palette-item" onclick="execCmd('df -h')">Check Disk Status</div>
-                <div class="palette-item" onclick="execCmd('ps aux')">List All Threads</div>
-                <div class="palette-item" onclick="execCmd('uptime')">System Uptime</div>
-                <div class="palette-item" onclick="execCmd('free -m')">Memory Info</div>
-                <div class="palette-item" onclick="execCmd('du -sh *')">Disk Usage per Folder</div>
-                <div class="palette-item" onclick="execCmd('nproc')">Number of CPU Cores</div>
-                <div class="palette-item" onclick="execCmd('whoami')">Current System User</div>
-                <div class="palette-item" onclick="execCmd('lsblk')">List Block Devices</div>
-                <div class="palette-item" onclick="execCmd('last -n 5')">Recent Logins</div>
-                <div class="palette-item" onclick="location.reload()">Hard Reboot Dashboard</div>
+    <div id="palette" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 2500; display: flex; align-items: flex-start; justify-content: center; padding-top: 100px;">
+        <div class="glass-card" style="width: 600px; background: #1a1a1e; border-color: var(--primary); padding: 0; overflow: hidden;">
+            <input type="text" id="pal-input" placeholder="Quick search commands..." style="font-size: 18px; border: none; border-bottom: 1px solid var(--card-border); border-radius: 0; background: transparent; padding: 20px;">
+            <div id="pal-items" style="max-height: 400px; overflow-y: auto; padding: 8px;">
+                <button class="palette-item" onclick="execCmd('ls -lah')">List Files (Detailed)</button>
+                <button class="palette-item" onclick="execCmd('df -h')">Check Disk Status</button>
+                <button class="palette-item" onclick="execCmd('ps aux')">List All Threads</button>
+                <button class="palette-item" onclick="execCmd('uptime')">System Uptime</button>
+                <button class="palette-item" onclick="execCmd('free -m')">Memory Info</button>
+                <button class="palette-item" onclick="execCmd('du -sh *')">Disk Usage per Folder</button>
+                <button class="palette-item" onclick="execCmd('nproc')">Number of CPU Cores</button>
+                <button class="palette-item" onclick="execCmd('whoami')">Current System User</button>
+                <button class="palette-item" onclick="execCmd('lsblk')">List Block Devices</button>
+                <button class="palette-item" onclick="execCmd('last -n 5')">Recent Logins</button>
+                <button class="palette-item" onclick="location.reload()">Hard Reboot Dashboard</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="modal" class="hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="modal-title" style="margin:0; color:var(--primary);">Command Result</h3>
+                <button class="secondary" onclick="closeModal()">Close</button>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
         </div>
     </div>
 
@@ -293,19 +330,11 @@
             const userInp = document.getElementById('username');
             const passInp = document.getElementById('password');
             const errDiv = document.getElementById('login-err');
-            
             try {
                 const data = await API.post('/api/login', { username: userInp.value, password: passInp.value });
-                if (data.success) { 
-                    localStorage.setItem('aidash_role', data.role); 
-                    startApp(); 
-                } else {
-                    errDiv.textContent = data.message || 'Login failed';
-                }
-            } catch (e) {
-                errDiv.textContent = 'Server communication error';
-                console.error(e);
-            }
+                if (data.success) { localStorage.setItem('aidash_role', data.role); startApp(); } 
+                else { errDiv.textContent = data.message || 'Login failed'; }
+            } catch (e) { errDiv.textContent = 'Server communication error'; }
         }
 
         function startApp() {
@@ -314,22 +343,20 @@
             document.getElementById('sys-bar').style.display = 'flex';
             refreshAll();
             browseFiles();
-            scanWifi();
+            checkGemini();
             setInterval(refreshAll, 5000);
             setInterval(refreshLogs, 10000);
         }
 
         async function refreshAll() {
-            const stats = await API.get('/api/stats');
-            const disk = await API.get('/api/disk');
-            const procs = await API.get('/api/services');
-            const svcs = await API.get('/api/config-services');
-            const alerts = await API.get('/api/alerts');
+            const [stats, disk, procs, svcs, alerts] = await Promise.all([
+                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/services'),
+                API.get('/api/config-services'), API.get('/api/alerts')
+            ]);
 
             document.getElementById('host-title').textContent = stats.os.hostname;
             document.getElementById('system-uptime').textContent = `System Uptime: ${Math.floor(stats.uptime/3600)}h ${Math.floor((stats.uptime%3600)/60)}m`;
 
-            // System Bar
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             document.getElementById('bar-battery').textContent = `🔋 ${stats.metrics.battery}`;
@@ -337,7 +364,6 @@
 
             document.getElementById('cpu-val').textContent = stats.load[0].toFixed(2);
             document.getElementById('cpu-bar').style.width = Math.min(100, (stats.load[0] * 20)) + '%';
-            
             if (stats.metrics.cpuCores && stats.metrics.cpuCores.length) {
                 document.getElementById('cpu-cores').textContent = `Cores: [ ${stats.metrics.cpuCores.map(c => c + '%').join(' | ')} ]`;
             }
@@ -357,19 +383,7 @@
             document.getElementById('os-ports').textContent = `Ports: ${stats.metrics.ports}`;
 
             document.getElementById('proc-list').innerHTML = procs.map(p => `
-                <tr>
-                    <td>${p.pid}</td>
-                    <td style="color: var(--primary)">${p.cpu}%</td>
-                    <td>${p.mem}%</td>
-                    <td style="font-family: monospace; font-size: 11px;">${p.cmd.split(' ').pop()}</td>
-                </tr>
-            `).join('');
-
-            document.getElementById('folder-list').innerHTML = disk.topDirs.map(d => `
-                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px;">
-                    <span style="color: var(--text-dim)">${d.name}</span>
-                    <span style="font-weight: 600">${d.size}</span>
-                </div>
+                <tr><td>${p.pid}</td><td style="color: var(--primary)">${p.cpu}%</td><td>${p.mem}%</td><td style="font-family: monospace; font-size: 11px;">${p.cmd.split(' ').pop()}</td></tr>
             `).join('');
 
             document.getElementById('svc-links').innerHTML = svcs.map(s => `
@@ -384,6 +398,34 @@
             `).join('') : "System status healthy.";
         }
 
+        async function execCmd(command) {
+            const res = await API.post('/api/command', { command });
+            showModal("$ " + command, res.output);
+            document.getElementById('palette').classList.add('hidden');
+        }
+
+        function showModal(title, body) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').textContent = body;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        async function checkGemini() {
+            const res = await API.get('/api/gemini/status');
+            if (res.available) document.getElementById('gemini-section').style.display = 'block';
+        }
+
+        async function runGemini() {
+            const prompt = document.getElementById('gemini-input').value; if(!prompt) return;
+            const chat = document.getElementById('gemini-chat');
+            chat.innerHTML += `<div style="color:var(--primary)">> ${prompt}</div>`;
+            document.getElementById('gemini-input').value = '';
+            const res = await API.post('/api/gemini/run', { prompt });
+            chat.innerHTML += `<div>${res.output}</div><br>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
         async function scanWifi() {
             const list = await API.get('/api/wifi/scan');
             const select = document.getElementById('wifi-list');
@@ -395,36 +437,29 @@
             const password = document.getElementById('wifi-pass').value;
             const status = document.getElementById('wifi-status');
             if (!ssid) return;
-            status.textContent = 'Connecting to ' + ssid + '...';
+            status.textContent = 'Connecting...';
             const res = await API.post('/api/wifi/connect', { ssid, password });
-            status.textContent = res.success ? 'Successfully connected to ' + ssid : 'Failed: ' + res.output;
-            if (res.success) scanWifi();
+            status.textContent = res.success ? 'Connected' : 'Failed: ' + res.output;
         }
 
         function renderBreadcrumbs() {
             const parts = currentDir.split('/').filter(p => p !== '.' && p !== '');
             let html = `<span style="cursor:pointer; color:var(--primary); font-weight:600;" onclick="browseFiles('.', true)">root</span>`;
             let build = '.';
-            for (let p of parts) {
-                build += '/' + p;
-                html += ` <span style="opacity: 0.5;">/</span> <span style="cursor:pointer; color:var(--primary); font-weight:600;" onclick="browseFiles('${build}', true)">${p}</span>`;
-            }
+            for (let p of parts) { build += '/' + p; html += ` <span style="opacity: 0.5;">/</span> <span style="cursor:pointer; color:var(--primary); font-weight:600;" onclick="browseFiles('${build}', true)">${p}</span>`; }
             document.getElementById('breadcrumbs').innerHTML = html;
         }
 
         function renderFileList(items) {
-            const list = document.getElementById('file-list');
-            list.innerHTML = items.map(i => `
+            document.getElementById('file-list').innerHTML = items.map(i => `
                 <div class="file-item" style="padding: 6px 10px; border-radius: 6px; display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 2px;">
                     <div onclick="${i.isDir ? `browseFiles('${i.path || i.name}')` : `readFile('${i.path || i.name}')`}" style="flex-grow: 1; cursor: pointer; display: flex; gap: 8px; align-items: center; overflow: hidden;">
                         <span style="opacity: 0.6; flex-shrink: 0;">${i.isDir ? '📁' : '📄'}</span>
-                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${i.path || i.name}">${i.path || i.name}</span>
+                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${i.name}</span>
                     </div>
-                    <div style="font-size: 11px; opacity: 0.4; min-width: 45px; text-align: right; flex-shrink: 0;">${i.isDir ? '' : formatBytes(i.size)}</div>
-                    <div style="display: flex; gap: 4px; flex-shrink: 0;" class="file-actions">
-                        ${i.isDir ? '' : `<button class="secondary" style="padding: 2px 6px; font-size: 11px;" onclick="downloadFile('${i.path || i.name}')" title="Download">↓</button>`}
-                        <button class="secondary" style="padding: 2px 6px; font-size: 11px;" onclick="renameFile('${i.path || i.name}')" title="Rename">✏️</button>
-                        <button class="secondary" style="background: rgba(239, 68, 68, 0.15); padding: 2px 6px; font-size: 11px; color: var(--danger); border: none;" onclick="deleteFile('${i.path || i.name}')" title="Delete">×</button>
+                    <div class="file-actions">
+                        ${i.isDir ? '' : `<button class="secondary" style="padding: 2px 6px; font-size: 11px;" onclick="downloadFile('${i.path || i.name}')">↓</button>`}
+                        <button class="secondary" style="background: rgba(239, 68, 68, 0.15); padding: 2px 6px; font-size: 11px; color: var(--danger); border: none;" onclick="deleteFile('${i.path || i.name}')">×</button>
                     </div>
                 </div>
             `).join('');
@@ -432,92 +467,29 @@
 
         async function browseFiles(path = '.', isAbsolute = false) {
             if (isAbsolute) { currentDir = path; } else {
-                if (path === '..') {
-                    const parts = currentDir.split('/');
-                    parts.pop();
-                    currentDir = parts.join('/') || '.';
-                } else if (path !== '.') {
-                    currentDir = (currentDir === '.' ? '' : currentDir + '/') + path;
-                }
+                if (path === '..') { const parts = currentDir.split('/'); parts.pop(); currentDir = parts.join('/') || '.'; } 
+                else if (path !== '.') { currentDir = (currentDir === '.' ? '' : currentDir + '/') + path; }
             }
             renderBreadcrumbs();
             const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
-            if (items.error) { alert("Error: " + items.error); return; }
             renderFileList(items);
-        }
-
-        async function searchFiles() {
-            const q = document.getElementById('file-search').value;
-            if (!q) return browseFiles('.', true);
-            document.getElementById('breadcrumbs').innerHTML = `Search results for: "<span style="color:white">${q}</span>"`;
-            const items = await API.get(`/api/files/search?dir=${encodeURIComponent(currentDir)}&q=${encodeURIComponent(q)}`);
-            if (items.error) { alert("Search Error"); return; }
-            renderFileList(items);
-        }
-
-        async function uploadFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async (ev) => {
-                const targetPath = (currentDir === '.' ? '' : currentDir + '/') + file.name;
-                const res = await API.post('/api/files/upload', { path: targetPath, contentBase64: ev.target.result });
-                if (res.success) browseFiles(currentDir, true); else alert('Upload failed');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function deleteFile(name) {
-            if (!confirm(`Are you sure you want to delete ${name}?`)) return;
-            const path = name.includes('/') ? name : (currentDir === '.' ? '' : currentDir + '/') + name;
-            const res = await API.post('/api/files/delete', { path });
-            if (res.success) browseFiles(currentDir, true);
-        }
-
-        async function renameFile(name) {
-            const newName = prompt('Enter new name:', name.split('/').pop());
-            if (!newName || newName === name.split('/').pop()) return;
-            const oldPath = name.includes('/') ? name : (currentDir === '.' ? '' : currentDir + '/') + name;
-            const newPath = (currentDir === '.' ? '' : currentDir + '/') + newName;
-            const res = await API.post('/api/files/rename', { oldPath, newPath });
-            if (res.success) browseFiles(currentDir, true);
-        }
-
-        function downloadFile(name) {
-            const path = name.includes('/') ? name : (currentDir === '.' ? '' : currentDir + '/') + name;
-            window.open('/api/files/download?path=' + encodeURIComponent(path), '_blank');
         }
 
         async function readFile(name) {
-            const path = name.includes('/') ? name : (currentDir === '.' ? '' : currentDir + '/') + name;
+            const path = (currentDir === '.' ? '' : currentDir + '/') + name;
             const res = await fetch('/api/files/read?path=' + encodeURIComponent(path));
             if (res.ok) {
-                const text = await res.text();
-                const editor = document.getElementById('editor-area');
-                editor.value = text;
-                editor.readOnly = false;
+                document.getElementById('editor-area').value = await res.text();
+                document.getElementById('editor-area').readOnly = false;
                 currentFile = path;
                 document.getElementById('save-btn').classList.remove('hidden');
-            } else { alert("Failed to read file"); }
+            }
         }
 
         async function saveFile() {
             if (!currentFile) return;
-            const content = document.getElementById('editor-area').value;
-            const res = await API.post('/api/files/write', { path: currentFile, content });
-            if (res.success) {
-                const btn = document.getElementById('save-btn');
-                btn.textContent = 'Saved!';
-                setTimeout(() => btn.textContent = 'Save Changes', 2000);
-            } else { alert("Error saving file"); }
-        }
-
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+            const res = await API.post('/api/files/write', { path: currentFile, content: document.getElementById('editor-area').value });
+            if (res.success) { document.getElementById('save-btn').textContent = 'Saved!'; setTimeout(() => document.getElementById('save-btn').textContent = 'Save', 2000); }
         }
 
         async function refreshLogs() {
@@ -532,31 +504,23 @@
             const chat = document.getElementById('chat-box');
             chat.innerHTML += `<div class="msg user">${prompt}</div>`;
             document.getElementById('chat-input').value = '';
-            const contentStr = document.getElementById('editor-area').value || '';
-            const payload = { prompt, contextFile: currentFile };
-            if (contentStr.length > 0) { payload.contextContent = contentStr.length > 5000 ? contentStr.substring(0, 5000) + '...' : contentStr; }
-            const res = await API.post('/api/ai/ask', payload);
-            chat.innerHTML += `<div class="msg ai">${res.text} ${res.suggestion ? `<br><br><button onclick="execCmd('${res.suggestion}')">Approve Fix: ${res.suggestion}</button>` : ''}</div>`;
+            const res = await API.post('/api/ai/ask', { prompt, contextFile: currentFile });
+            chat.innerHTML += `<div class="msg ai">${res.text} ${res.suggestion ? `<br><br><button onclick="execCmd('${res.suggestion}')">Approve: ${res.suggestion}</button>` : ''}</div>`;
             chat.scrollTop = chat.scrollHeight;
-        }
-
-        async function execCmd(command) {
-            const res = await API.post('/api/command', { command });
-            const chat = document.getElementById('chat-box');
-            chat.innerHTML += `<div class="msg ai" style="background: #000; border-color: var(--success);"><pre style="margin:0; font-size: 10px;">$ ${command}\n${res.output}</pre></div>`;
-            chat.scrollTop = chat.scrollHeight;
-            document.getElementById('palette').classList.add('hidden');
         }
 
         function togglePalette() { document.getElementById('palette').classList.toggle('hidden'); if(!palette.classList.contains('hidden')) document.getElementById('pal-input').focus(); }
         function logout() { localStorage.removeItem('aidash_role'); location.reload(); }
         
-        window.onkeydown = e => { 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
-                e.preventDefault(); 
-                togglePalette(); 
-            } 
+        document.getElementById('pal-input').onkeyup = function(e) {
+            if(e.key === 'Escape') togglePalette();
+            const q = this.value.toLowerCase();
+            document.querySelectorAll('.palette-item').forEach(el => {
+                el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none';
+            });
         };
+
+        window.onkeydown = e => { if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); togglePalette(); } };
         if(localStorage.getItem('aidash_role')) startApp();
     </script>
 </body>

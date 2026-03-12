@@ -21,7 +21,7 @@ function getConfig() {
     return { modules: { alerts: true, ai: true, logs: true, disk: true, files: true } };
 }
 
-const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install', 'whoami', 'last', 'nproc', 'lsblk'];
+const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install', 'whoami', 'last', 'nproc', 'lsblk', 'ls -lah'];
 
 let alerts = [];
 let sysMetrics = { 
@@ -152,6 +152,10 @@ const server = http.createServer((req, res) => {
         handleWifiScan(res);
     } else if (url === '/api/wifi/connect' && method === 'POST') {
         handleWifiConnect(req, res);
+    } else if (url === '/api/gemini/status' && method === 'GET') {
+        handleGeminiStatus(res);
+    } else if (url === '/api/gemini/run' && method === 'POST') {
+        handleGeminiRun(req, res);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -206,7 +210,7 @@ function handleStats(res) {
 
 function handleServices(res) {
     exec('ps aux | grep node | grep -v grep', (err, stdout) => {
-        const lines = stdout.trim().split('\n').filter(l => l.length > 0);
+        const lines = (stdout || '').trim().split('\n').filter(l => l.length > 0);
         handleJson(res, lines.map(l => {
             const p = l.replace(/\s+/g, ' ').split(' ');
             return { name: `Proc ${p[1]}`, pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
@@ -216,7 +220,7 @@ function handleServices(res) {
 
 function handleDisk(res) {
     exec('df -h /', (err, stdout) => {
-        const lines = stdout.trim().split('\n');
+        const lines = (stdout || '').trim().split('\n');
         if (lines.length < 2) { handleJson(res, { main: { usage: '0%' }, topDirs: [] }); return; }
         const p = lines[1].replace(/\s+/g, ' ').split(' ');
         const mainDisk = { path: '/', size: p[1], used: p[2], avail: p[3], usage: p[4] };
@@ -409,17 +413,10 @@ function handleFileUpload(req, res) {
 }
 
 function handleWifiScan(res) {
-    const platform = os.platform();
-    if (platform === 'darwin') {
-        exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s || networksetup -listallhardwareports", (err, stdout) => {
-            handleJson(res, []); 
-        });
-    } else {
-        wifi.scan((err, networks) => {
-            if (err) handleJson(res, []);
-            else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
-        });
-    }
+    wifi.scan((err, networks) => {
+        if (err) handleJson(res, []);
+        else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+    });
 }
 
 function handleWifiConnect(req, res) {
@@ -427,16 +424,27 @@ function handleWifiConnect(req, res) {
     req.on('end', () => {
         try {
             const { ssid, password } = JSON.parse(body);
-            const platform = os.platform();
-            if (platform === 'darwin') {
-                exec(`networksetup -setairportnetwork en0 "${ssid}" "${password}"`, (err, stdout) => {
-                    handleJson(res, { success: !err, output: stdout });
-                });
-            } else {
-                wifi.connect({ ssid, password }, (err) => {
-                    handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
-                });
-            }
+            wifi.connect({ ssid, password }, (err) => {
+                handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
+            });
+        } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
+    });
+}
+
+function handleGeminiStatus(res) {
+    exec('gemini --version', (err) => {
+        handleJson(res, { available: !err });
+    });
+}
+
+function handleGeminiRun(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { prompt } = JSON.parse(body);
+            exec(`gemini "${prompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
+                handleJson(res, { output: stdout || stderr, success: !err });
+            });
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
     });
 }
