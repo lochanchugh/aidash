@@ -1,8 +1,16 @@
 {
   "port": 3000,
+  "modules": {
+    "alerts": true,
+    "ai": true,
+    "logs": true,
+    "disk": true,
+    "deployment": true
+  },
   "services": [
-    { "name": "Nginx", "port": 80 },
-    { "name": "API", "port": 5000 }
+    { "name": "AiDash Dashboard", "port": 3000 },
+    { "name": "API Service", "port": 5000 },
+    { "name": "Web Server", "port": 80 }
   ],
-  "whitelist": ["ls", "df -h", "uptime"]
+  "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install"]
 }
