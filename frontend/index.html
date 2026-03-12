@@ -14,7 +14,7 @@
             --danger: #dc3545;
             --card-bg: #222;
         }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
@@ -57,10 +57,10 @@
         </div>
 
         <div class="grid">
-            <div class="card"><div id="cpu-stat" class="stat-value">Loading...</div><div class="stat-label">CPU Usage</div><div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div></div>
-            <div class="card"><div id="ram-stat" class="stat-value">Loading...</div><div class="stat-label">RAM Usage</div><div class="progress-bar"><div id="ram-fill" class="progress-fill" style="width: 0%;"></div></div></div>
-            <div class="card"><div id="disk-stat" class="stat-value">Loading...</div><div class="stat-label">Disk Usage</div><div class="progress-bar"><div id="disk-fill" class="progress-fill" style="width: 0%;"></div></div></div>
-            <div class="card"><div id="uptime-stat" class="stat-value">Loading...</div><div class="stat-label">Uptime</div></div>
+            <div class="card"><div id="cpu-stat" class="stat-value">...</div><div class="stat-label">CPU Load (1m)</div><div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="ram-stat" class="stat-value">...</div><div class="stat-label">Memory Usage</div><div class="progress-bar"><div id="ram-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="disk-summary" class="stat-value">...</div><div class="stat-label">Disk Capacity</div><div class="progress-bar"><div id="disk-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="uptime-stat" class="stat-value">...</div><div class="stat-label">System Uptime</div></div>
         </div>
 
         <div class="grid">
@@ -69,17 +69,17 @@
                 <div id="services-list"></div>
             </div>
             <div class="card">
-                <h3>Alerts</h3>
-                <div id="alerts-list"></div>
+                <h3>System Alerts</h3>
+                <div id="alerts-list">No active alerts.</div>
             </div>
             <div class="card">
-                <h3>Disk Explorer</h3>
+                <h3>Disk Usage Explorer</h3>
                 <div id="disk-explorer"></div>
             </div>
         </div>
 
         <div class="card">
-            <h3>AI Assistant</h3>
+            <h3>AI Diagnostic Assistant</h3>
             <div id="ai-chat" class="ai-chat"></div>
             <div style="display: flex; margin-top: 10px;">
                 <input type="text" id="ai-prompt" placeholder="Ask AI something (e.g. 'check disk')" style="margin: 0; margin-right: 10px;">
@@ -92,8 +92,9 @@
         <input type="text" id="palette-input" placeholder="Type a command..." style="border: none; border-bottom: 1px solid #444; border-radius: 8px 8px 0 0;">
         <div id="palette-items">
             <div class="palette-item" onclick="executeCommand('df -h')">Check Disk Usage</div>
-            <div class="palette-item" onclick="executeCommand('ls')">List Files</div>
+            <div class="palette-item" onclick="executeCommand('ls -la')">List Files</div>
             <div class="palette-item" onclick="executeCommand('uptime')">System Uptime</div>
+            <div class="palette-item" onclick="executeCommand('du -sh *')">Current Dir Size</div>
         </div>
     </div>
 
@@ -123,20 +124,23 @@
             fetchAlerts();
             fetchDisk();
             setInterval(fetchStats, 5000);
+            setInterval(fetchDisk, 30000);
         }
 
         async function fetchStats() {
-            const res = await fetch('/api/stats');
-            const data = await res.json();
-            const cpu = (data.load[0] * 100).toFixed(1);
-            const ram = (data.memory.rss / 1024 / 1024).toFixed(0);
-            document.getElementById('uptime-stat').textContent = Math.floor(data.uptime) + 's';
-            document.getElementById('ram-stat').textContent = ram + ' MB';
-            document.getElementById('cpu-stat').textContent = cpu + '%';
-            document.getElementById('disk-stat').textContent = '75%';
-            document.getElementById('cpu-fill').style.width = cpu + '%';
-            document.getElementById('ram-fill').style.width = (data.memory.rss / (256 * 1024 * 1024) * 100) + '%';
-            document.getElementById('disk-fill').style.width = '75%';
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                const load = data.load[0];
+                const cpuPercent = Math.min(100, (load * 50));
+                const ramMB = Math.floor(data.memory.rss / 1024 / 1024);
+                
+                document.getElementById('uptime-stat').textContent = Math.floor(data.uptime) + 's';
+                document.getElementById('ram-stat').textContent = ramMB + ' MB';
+                document.getElementById('cpu-stat').textContent = load.toFixed(2);
+                document.getElementById('cpu-fill').style.width = cpuPercent + '%';
+                document.getElementById('ram-fill').style.width = Math.min(100, (ramMB / 8)) + '%';
+            } catch (e) {}
         }
 
         async function fetchServices() {
@@ -145,7 +149,7 @@
             const list = document.getElementById('services-list');
             list.innerHTML = data.map(s => `
                 <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                    <div><strong>${s.name}</strong> <span style="font-size: 12px; opacity: 0.7;">(port ${s.port})</span></div>
+                    <div><strong>${s.name}</strong></div>
                     <div>
                         <span style="color: ${s.status === 'running' ? 'var(--success)' : 'var(--danger)'}; font-size: 12px; margin-right: 10px;">${s.status}</span>
                         <button style="padding: 4px 8px; font-size: 12px;">Logs</button>
@@ -158,6 +162,7 @@
             const res = await fetch('/api/alerts');
             const data = await res.json();
             const list = document.getElementById('alerts-list');
+            if (data.length === 0) { list.textContent = "No active alerts."; return; }
             list.innerHTML = data.map(a => `
                 <div class="alert alert-${a.severity}">
                     <strong>${a.type}</strong>: ${a.message}
@@ -166,15 +171,21 @@
         }
 
         async function fetchDisk() {
-            const res = await fetch('/api/disk');
-            const data = await res.json();
-            const list = document.getElementById('disk-explorer');
-            list.innerHTML = data.map(d => `
-                <div style="margin-bottom: 10px;">
-                    <div><strong>${d.path}</strong>: ${d.used} / ${d.size}</div>
-                    <div class="progress-bar"><div class="progress-fill" style="width: ${d.usage}; background: ${parseInt(d.usage) > 80 ? 'var(--danger)' : 'var(--success)'}"></div></div>
-                </div>
-            `).join('');
+            try {
+                const res = await fetch('/api/disk');
+                const data = await res.json();
+                if (data.length === 0) return;
+                const list = document.getElementById('disk-explorer');
+                const d = data[0];
+                document.getElementById('disk-summary').textContent = d.usage;
+                document.getElementById('disk-fill').style.width = d.usage;
+                list.innerHTML = data.map(d => `
+                    <div style="margin-bottom: 10px;">
+                        <div style="font-size: 14px;"><strong>${d.path}</strong>: ${d.used} / ${d.size}</div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${d.usage}; background: ${parseInt(d.usage) > 80 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                    </div>
+                `).join('');
+            } catch (e) {}
         }
 
         async function askAi() {
@@ -204,10 +215,10 @@
                 body: JSON.stringify({ command })
             });
             if (res.status === 403) {
-                chat.innerHTML += `<div class="ai-message" style="color: var(--danger);">Command not whitelisted.</div>`;
+                chat.innerHTML += `<div class="ai-message" style="color: var(--danger);">Command forbidden.</div>`;
             } else {
                 const data = await res.json();
-                chat.innerHTML += `<div class="ai-message"><pre style="font-size: 10px;">${data.output}</pre></div>`;
+                chat.innerHTML += `<div class="ai-message"><pre style="font-size: 10px; background: #000; padding: 5px; overflow-x: auto;">${data.output}</pre></div>`;
             }
             chat.scrollTop = chat.scrollHeight;
             document.getElementById('command-palette').style.display = 'none';
