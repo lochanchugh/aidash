@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiDash - Server Dashboard</title>
+    <style>
+        :root {
+            --bg: #111;
+            --text: #eee;
+            --primary: #007bff;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --card-bg: #222;
+        }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .stat-value { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { font-size: 14px; opacity: 0.7; }
+        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; background: var(--primary); color: white; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+        .login-page { display: flex; align-items: center; justify-content: center; height: 100vh; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #444; background: #333; color: white; border-radius: 4px; box-sizing: border-box; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div id="login-container" class="login-page">
+        <div class="card" style="width: 300px;">
+            <h2>AiDash Login</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()" style="width: 100%;">Login</button>
+            <div id="login-error" style="color: var(--danger); margin-top: 10px; font-size: 14px;"></div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="container hidden">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>AiDash Dashboard</h1>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div id="cpu-stat" class="stat-value">Loading...</div>
+                <div class="stat-label">CPU Usage</div>
+            </div>
+            <div class="card">
+                <div id="ram-stat" class="stat-value">Loading...</div>
+                <div class="stat-label">RAM Usage</div>
+            </div>
+            <div class="card">
+                <div id="disk-stat" class="stat-value">Loading...</div>
+                <div class="stat-label">Disk Usage</div>
+            </div>
+            <div class="card">
+                <div id="uptime-stat" class="stat-value">Loading...</div>
+                <div class="stat-label">Uptime</div>
+            </div>
+        </div>
+
+        <h2>Services</h2>
+        <div id="services-list" class="grid">
+            <div class="card">
+                <div class="stat-value">Web Server</div>
+                <div class="stat-label">Status: Running</div>
+                <div style="margin-top: 10px;">
+                    <button style="background: var(--danger);">Stop</button>
+                    <button>Logs</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('role', data.role);
+                showDashboard();
+            } else {
+                document.getElementById('login-error').textContent = data.message;
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            fetchStats();
+            setInterval(fetchStats, 5000);
+        }
+
+        async function fetchStats() {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            document.getElementById('uptime-stat').textContent = Math.floor(data.uptime) + 's';
+            document.getElementById('ram-stat').textContent = Math.floor(data.memory.rss / 1024 / 1024) + ' MB';
+            document.getElementById('cpu-stat').textContent = (data.load[0] * 100).toFixed(1) + '%';
+            document.getElementById('disk-stat').textContent = '205 GB'; // Mock
+        }
+
+        function logout() {
+            localStorage.removeItem('role');
+            location.reload();
+        }
+
+        if (localStorage.getItem('role')) {
+            showDashboard();
+        }
+    </script>
+</body>
+</html>
