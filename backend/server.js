@@ -21,7 +21,7 @@ function getConfig() {
     return { modules: { alerts: true, ai: true, logs: true, disk: true, files: true } };
 }
 
-const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install'];
+const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install', 'whoami', 'last', 'nproc', 'lsblk'];
 
 let alerts = [];
 let sysMetrics = { 
@@ -62,7 +62,6 @@ async function updateMetrics() {
         sysMetrics.userList = uniqueUsers.join(', ') || 'None';
         sysMetrics.totalSessions = users.length;
 
-        // Wi-Fi Fallback for macOS without airport
         if (platform === 'darwin') {
             exec("networksetup -getairportnetwork en0", (err, stdout) => {
                 if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
@@ -70,12 +69,11 @@ async function updateMetrics() {
             });
         } else {
             wifi.getCurrentConnections((err, conn) => {
-                if (!err && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
+                if (!err && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
                 else sysMetrics.wifi = 'None';
             });
         }
 
-        // Ports logic
         si.networkConnections().then(conns => {
             sysMetrics.ports = conns.filter(c => c.state === 'LISTEN' && c.protocol === 'tcp').length;
         }).catch(() => {});
@@ -154,8 +152,6 @@ const server = http.createServer((req, res) => {
         handleWifiScan(res);
     } else if (url === '/api/wifi/connect' && method === 'POST') {
         handleWifiConnect(req, res);
-    } else if (url === '/api/brightness' && method === 'POST') {
-        handleBrightness(req, res);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -415,9 +411,8 @@ function handleFileUpload(req, res) {
 function handleWifiScan(res) {
     const platform = os.platform();
     if (platform === 'darwin') {
-        // macOS fallback scan
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s || networksetup -listallhardwareports", (err, stdout) => {
-            handleJson(res, []); // Simplified for now as full scan requires specific tools
+            handleJson(res, []); 
         });
     } else {
         wifi.scan((err, networks) => {
@@ -443,25 +438,6 @@ function handleWifiConnect(req, res) {
                 });
             }
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
-    });
-}
-
-function handleBrightness(req, res) {
-    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
-        try {
-            const { level } = JSON.parse(body); // 0-100
-            const platform = os.platform();
-            let cmd = "";
-            if (platform === 'darwin') {
-                cmd = `osascript -e 'tell application "System Events" to set value of attribute "AXValue" of slider 1 of group 1 of window 1 of process "System Settings" to ${level/100}'`;
-            } else if (platform === 'win32') {
-                cmd = `powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, ${level})`;
-            } else {
-                cmd = `brightness ${level/100} 2>/dev/null || xbacklight -set ${level} 2>/dev/null`;
-            }
-            exec(cmd, (err) => handleJson(res, { success: !err }));
-        } catch (e) { handleJson(res, { success: false }); }
     });
 }
 

@@ -110,8 +110,8 @@
         .file-actions { opacity: 0; }
         .file-item:hover .file-actions { opacity: 1; }
 
-        .slider { -webkit-appearance: none; width: 100%; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); outline: none; }
-        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; }
+        .palette-item { padding: 12px; cursor: pointer; border-radius: 8px; border: 1px solid transparent; }
+        .palette-item:hover { background: rgba(59, 130, 246, 0.1); border-color: var(--primary); }
     </style>
 </head>
 <body>
@@ -119,6 +119,7 @@
         <div class="left">
             <div class="item" style="font-weight: 700; color: var(--primary);">AIDASH OS</div>
             <div class="item" id="bar-date">...</div>
+            <div class="item" style="opacity: 0.5; font-size: 10px;">(Server Time)</div>
         </div>
         <div class="right">
             <div class="item" id="bar-wifi">📶 ...</div>
@@ -179,14 +180,7 @@
 
         <div class="grid" style="grid-template-columns: 1fr 1fr;">
             <section class="glass-card">
-                <h3>Hardware Control Center</h3>
-                <div style="margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                        <span style="color: var(--text-dim);">Display Brightness</span>
-                        <span id="bright-val">50%</span>
-                    </div>
-                    <input type="range" min="0" max="100" value="50" class="slider" id="bright-range" oninput="changeBrightness(this.value)">
-                </div>
+                <h3>Hardware & Network</h3>
                 <div style="margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
                         <span style="color: var(--text-dim);">Wi-Fi Connection</span>
@@ -271,10 +265,17 @@
         <div class="glass-card" style="width: 600px; background: #1a1a1e; border-color: var(--primary);">
             <input type="text" id="pal-input" placeholder="Quick search commands..." style="font-size: 18px; margin-bottom: 12px;">
             <div id="pal-items" style="display: flex; flex-direction: column; gap: 4px;">
-                <div class="palette-item" onclick="execCmd('df -h')" style="padding: 12px; cursor: pointer; border-radius: 8px;">Check Disk Status</div>
-                <div class="palette-item" onclick="execCmd('ps aux')" style="padding: 12px; cursor: pointer; border-radius: 8px;">List All Threads</div>
-                <div class="palette-item" onclick="execCmd('ls -R')" style="padding: 12px; cursor: pointer; border-radius: 8px;">Map Project Structure</div>
-                <div class="palette-item" onclick="location.reload()" style="padding: 12px; cursor: pointer; border-radius: 8px;">Hard Reboot Dashboard</div>
+                <div class="palette-item" onclick="execCmd('ls -lah')">List Files (Detailed)</div>
+                <div class="palette-item" onclick="execCmd('df -h')">Check Disk Status</div>
+                <div class="palette-item" onclick="execCmd('ps aux')">List All Threads</div>
+                <div class="palette-item" onclick="execCmd('uptime')">System Uptime</div>
+                <div class="palette-item" onclick="execCmd('free -m')">Memory Info</div>
+                <div class="palette-item" onclick="execCmd('du -sh *')">Disk Usage per Folder</div>
+                <div class="palette-item" onclick="execCmd('nproc')">Number of CPU Cores</div>
+                <div class="palette-item" onclick="execCmd('whoami')">Current System User</div>
+                <div class="palette-item" onclick="execCmd('lsblk')">List Block Devices</div>
+                <div class="palette-item" onclick="execCmd('last -n 5')">Recent Logins</div>
+                <div class="palette-item" onclick="location.reload()">Hard Reboot Dashboard</div>
             </div>
         </div>
     </div>
@@ -381,11 +382,6 @@
             document.getElementById('alerts-area').innerHTML = alerts.length ? alerts.map(a => `
                 <div class="alert-item alert-${a.severity}"><strong>${a.type}</strong>: ${a.message}</div>
             `).join('') : "System status healthy.";
-        }
-
-        async function changeBrightness(level) {
-            document.getElementById('bright-val').textContent = level + '%';
-            await API.post('/api/brightness', { level });
         }
 
         async function scanWifi() {
@@ -554,7 +550,13 @@
 
         function togglePalette() { document.getElementById('palette').classList.toggle('hidden'); if(!palette.classList.contains('hidden')) document.getElementById('pal-input').focus(); }
         function logout() { localStorage.removeItem('aidash_role'); location.reload(); }
-        window.onkeydown = e => { if(e.ctrlKey && e.key === 'k') { e.preventDefault(); togglePalette(); } };
+        
+        window.onkeydown = e => { 
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
+                e.preventDefault(); 
+                togglePalette(); 
+            } 
+        };
         if(localStorage.getItem('aidash_role')) startApp();
     </script>
 </body>

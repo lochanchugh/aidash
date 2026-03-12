@@ -52,6 +52,16 @@
 - **Deployment**: Docker-ready (`docker-compose up -d`)
 - **Whitelisted Commands**: `ls`, `df -h`, `uptime`, `free -m`, `du -sh`, `ps aux`, `tail -n 100`, `git pull`, `npm install`
 
+## Deployment & Server AI Instructions
+To deploy AiDash on a new server, provide the following prompt to the server's AI (Gemini/CLI):
+
+> "Setup AiDash OS: 
+> 1. Check for Docker/Compose or Node.js 20+.
+> 2. Ensure system dependencies: `sudo apt-get install -y lm-sensors wireless-tools network-manager`.
+> 3. If Docker: Run `docker-compose up -d --build`.
+> 4. If Node: Run `npm install --production` and `npm start`.
+> 5. Confirm dashboard is live on port 3000."
+
 ## Future Roadmap
 - Expanded Deployment Helper (Custom scripts, service auto-restarts).
 - Support for external notifications (Webhooks, email).

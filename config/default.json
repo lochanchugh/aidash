@@ -11,7 +11,8 @@
   "services": [
     { "name": "AiDash Dashboard", "port": 3000 },
     { "name": "API Service", "port": 5000 },
-    { "name": "Web Server", "port": 80 }
+    { "name": "Web Server", "port": 80 },
+    { "name": "SSH", "port": 22 }
   ],
-  "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install"]
+  "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", "whoami", "last", "nproc", "lsblk", "ls -lah"]
 }
