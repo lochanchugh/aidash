@@ -5,7 +5,8 @@
     "ai": true,
     "logs": true,
     "disk": true,
-    "deployment": true
+    "deployment": true,
+    "files": true
   },
   "services": [
     { "name": "AiDash Dashboard", "port": 3000 },

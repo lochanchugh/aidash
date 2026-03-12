@@ -1,0 +1,20 @@
+{
+  "name": "aidash",
+  "version": "1.0.0",
+  "description": "\"A minimal AI-powered server dashboard.\"",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node backend/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-wifi": "^2.0.16",
+    "systeminformation": "^5.31.4"
+  }
+}

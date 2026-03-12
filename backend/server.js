@@ -4,17 +4,88 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { exec } = require('child_process');
+const si = require('systeminformation');
+const wifi = require('node-wifi');
 
 const PORT = process.env.PORT || 3000;
 const SESSION_TOKEN = 'aidash_session';
 const CONFIG_PATH = path.join(__dirname, '../config/default.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
 const LOG_PATH = path.join(__dirname, '../server.log');
+const ROOT_DIR = path.resolve(__dirname, '..');
 
-// Whitelist for command execution
-const WHITELIST = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install'];
+wifi.init({ iface: null });
+
+function getConfig() {
+    if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    return { modules: { alerts: true, ai: true, logs: true, disk: true, files: true } };
+}
+
+const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install'];
 
 let alerts = [];
+let sysMetrics = { 
+    temp: 'N/A', 
+    userList: 'None', 
+    totalSessions: 0, 
+    ports: 0, 
+    cpuCores: [],
+    battery: 'N/A',
+    wifi: 'None',
+    date: ''
+};
+
+async function updateMetrics() {
+    sysMetrics.date = new Date().toLocaleString();
+    const platform = os.platform();
+    
+    try {
+        const [cpu, mem, temp, battery, users] = await Promise.all([
+            si.currentLoad().catch(() => ({ cpus: [] })),
+            si.mem().catch(() => ({})),
+            si.cpuTemperature().catch(() => ({})),
+            si.battery().catch(() => ({ hasBattery: false })),
+            si.users().catch(() => [])
+        ]);
+
+        sysMetrics.cpuCores = cpu.cpus.map(c => c.load.toFixed(1));
+        
+        if (temp.main > 0) sysMetrics.temp = `${temp.main.toFixed(1)}°C`;
+        else if (temp.max > 0) sysMetrics.temp = `${temp.max.toFixed(1)}°C`;
+        else sysMetrics.temp = 'N/A';
+
+        if (battery.hasBattery) {
+            sysMetrics.battery = `${battery.percent}% ${battery.isCharging ? '(Charging)' : ''}`;
+        } else sysMetrics.battery = 'N/A';
+
+        const uniqueUsers = [...new Set(users.map(u => u.user))];
+        sysMetrics.userList = uniqueUsers.join(', ') || 'None';
+        sysMetrics.totalSessions = users.length;
+
+        // Wi-Fi Fallback for macOS without airport
+        if (platform === 'darwin') {
+            exec("networksetup -getairportnetwork en0", (err, stdout) => {
+                if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
+                else sysMetrics.wifi = 'None';
+            });
+        } else {
+            wifi.getCurrentConnections((err, conn) => {
+                if (!err && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
+                else sysMetrics.wifi = 'None';
+            });
+        }
+
+        // Ports logic
+        si.networkConnections().then(conns => {
+            sysMetrics.ports = conns.filter(c => c.state === 'LISTEN' && c.protocol === 'tcp').length;
+        }).catch(() => {});
+
+    } catch (e) {
+        console.error("Metric collection error:", e.message);
+    }
+}
+setInterval(updateMetrics, 5000);
+updateMetrics();
 
 function evaluateAlerts() {
     const config = getConfig();
@@ -30,14 +101,16 @@ function evaluateAlerts() {
 setInterval(evaluateAlerts, 30000);
 evaluateAlerts();
 
-function getConfig() {
-    if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-    return { modules: { alerts: true, ai: true, logs: true, disk: true } };
+function safePath(p) {
+    const resolved = path.resolve(ROOT_DIR, p || '.');
+    if (!resolved.startsWith(ROOT_DIR)) throw new Error('Access Denied');
+    return resolved;
 }
 
 const server = http.createServer((req, res) => {
     const { method, url } = req;
     const config = getConfig();
+    const parsedUrl = new URL(url, `http://${req.headers.host}`);
 
     if (url === '/' && method === 'GET') {
         serveFile(res, path.join(__dirname, '../frontend/index.html'), 'text/html');
@@ -61,6 +134,28 @@ const server = http.createServer((req, res) => {
         if (config.modules.ai) handleAiAsk(req, res); else handleJson(res, { text: 'AI module disabled.' });
     } else if (url === '/api/deploy' && method === 'POST') {
         handleDeploy(req, res);
+    } else if (url.startsWith('/api/files/list') && method === 'GET') {
+        if (config.modules.files) handleFileList(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/read') && method === 'GET') {
+        if (config.modules.files) handleFileRead(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/write') && method === 'POST') {
+        if (config.modules.files) handleFileWrite(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/delete') && method === 'POST') {
+        if (config.modules.files) handleFileDelete(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/rename') && method === 'POST') {
+        if (config.modules.files) handleFileRename(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/search') && method === 'GET') {
+        if (config.modules.files) handleFileSearch(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/download') && method === 'GET') {
+        if (config.modules.files) handleFileDownload(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/upload') && method === 'POST') {
+        if (config.modules.files) handleFileUpload(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url === '/api/wifi/scan' && method === 'GET') {
+        handleWifiScan(res);
+    } else if (url === '/api/wifi/connect' && method === 'POST') {
+        handleWifiConnect(req, res);
+    } else if (url === '/api/brightness' && method === 'POST') {
+        handleBrightness(req, res);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -102,7 +197,15 @@ function handleLogin(req, res) {
 }
 
 function handleStats(res) {
-    handleJson(res, { uptime: os.uptime(), totalMem: os.totalmem(), freeMem: os.freemem(), load: os.loadavg(), cpus: os.cpus().length });
+    handleJson(res, { 
+        uptime: os.uptime(), 
+        totalMem: os.totalmem(), 
+        freeMem: os.freemem(), 
+        load: os.loadavg(), 
+        cpus: os.cpus().length,
+        os: { platform: os.platform(), release: os.release(), arch: os.arch(), hostname: os.hostname() },
+        metrics: sysMetrics
+    });
 }
 
 function handleServices(res) {
@@ -118,6 +221,7 @@ function handleServices(res) {
 function handleDisk(res) {
     exec('df -h /', (err, stdout) => {
         const lines = stdout.trim().split('\n');
+        if (lines.length < 2) { handleJson(res, { main: { usage: '0%' }, topDirs: [] }); return; }
         const p = lines[1].replace(/\s+/g, ' ').split(' ');
         const mainDisk = { path: '/', size: p[1], used: p[2], avail: p[3], usage: p[4] };
         exec('du -sh * 2>/dev/null | sort -rh | head -n 5', (err2, stdout2) => {
@@ -144,7 +248,9 @@ function handleCommand(req, res) {
     req.on('end', () => {
         try {
             const { command } = JSON.parse(body);
-            if (!WHITELIST.some(w => command.startsWith(w))) { res.writeHead(403); res.end('Forbidden'); return; }
+            const config = getConfig();
+            const whitelist = config.whitelist || WHITELIST_DEFAULT;
+            if (!whitelist.some(w => command.startsWith(w))) { res.writeHead(403); res.end('Forbidden'); return; }
             exec(command, (err, stdout, stderr) => { handleJson(res, { output: stdout || stderr }); });
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
@@ -154,7 +260,6 @@ function handleCommand(req, res) {
 }
 
 function handleDeploy(req, res) {
-    // Deployment helper: git pull && npm install && restart
     exec('git pull && npm install', (err, stdout, stderr) => {
         handleJson(res, { output: stdout || stderr, success: !err });
     });
@@ -165,18 +270,198 @@ function handleAiAsk(req, res) {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
-            const { prompt } = JSON.parse(body);
-            const memUsage = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
-            let text = memUsage > 80 ? "Memory is high. Check top processes." : "System is stable.";
-            if (prompt.toLowerCase().includes('deploy')) {
-                handleJson(res, { text: "I can help you deploy. I suggest running git pull.", suggestion: "git pull" });
-            } else {
-                handleJson(res, { text, suggestion: "ps aux" });
+            const { prompt, contextFile, contextContent } = JSON.parse(body);
+            const stats = {
+                uptime: os.uptime(),
+                load: os.loadavg(),
+                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
+            };
+            
+            let response = { text: "I'm not sure how to help with that. Try asking about system load, memory, or deployment.", suggestion: null };
+
+            const p = prompt.toLowerCase();
+            if (contextFile && (p.includes('fix') || p.includes('error'))) {
+                response.text = `I see you are looking at ${contextFile}. While I am a lightweight offline assistant, I recommend checking syntax and recent changes in this file.`;
+            } else if (p.includes('load') || p.includes('cpu')) {
+                response.text = `Current CPU load averages are ${stats.load.map(l => l.toFixed(2)).join(', ')}. ${stats.load[0] > 1.0 ? "Load is slightly elevated." : "System load is healthy."}`;
+                response.suggestion = "ps aux";
+            } else if (p.includes('mem') || p.includes('ram')) {
+                response.text = `Memory usage is currently at ${stats.mem.toFixed(1)}%. ${stats.mem > 80 ? "You might want to check for memory-heavy processes." : "Memory usage is well within limits."}`;
+                response.suggestion = "free -m";
+            } else if (p.includes('disk') || p.includes('space')) {
+                response.text = "Checking disk space might be a good idea if you're worried about storage.";
+                response.suggestion = "df -h";
+            } else if (p.includes('deploy') || p.includes('update')) {
+                response.text = "Ready to deploy? I can pull the latest changes and install dependencies.";
+                response.suggestion = "git pull && npm install";
+            } else if (p.includes('who are you') || p.includes('gemini')) {
+                response.text = "I am the AiDash Assistant, powered by the spirit of Gemini CLI. I help you monitor and manage your server.";
             }
+
+            handleJson(res, response);
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
         }
+    });
+}
+
+function handleFileList(parsedUrl, res) {
+    try {
+        const dir = safePath(parsedUrl.searchParams.get('path'));
+        const items = fs.readdirSync(dir, { withFileTypes: true });
+        handleJson(res, items.map(i => {
+            const fullPath = path.join(dir, i.name);
+            let size = 0;
+            try { if (i.isFile()) size = fs.statSync(fullPath).size; } catch (e) {}
+            return { name: i.name, isDir: i.isDirectory(), size };
+        }));
+    } catch (e) { handleJson(res, { error: e.message }); }
+}
+
+function handleFileRead(parsedUrl, res) {
+    try {
+        const file = safePath(parsedUrl.searchParams.get('path'));
+        if (!fs.statSync(file).isFile()) throw new Error('Not a file');
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(fs.readFileSync(file));
+    } catch (e) { res.writeHead(404); res.end(e.message); }
+}
+
+function handleFileWrite(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { path: p, content } = JSON.parse(body);
+            const file = safePath(p);
+            fs.writeFileSync(file, content);
+            handleJson(res, { success: true });
+        } catch (e) { res.writeHead(500); res.end(e.message); }
+    });
+}
+
+function handleFileDelete(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { path: p } = JSON.parse(body);
+            const target = safePath(p);
+            if (fs.statSync(target).isDirectory()) fs.rmdirSync(target, { recursive: true });
+            else fs.unlinkSync(target);
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(500); res.end(e.message); }
+    });
+}
+
+function handleFileRename(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { oldPath, newPath } = JSON.parse(body);
+            fs.renameSync(safePath(oldPath), safePath(newPath));
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(500); res.end(e.message); }
+    });
+}
+
+function handleFileDownload(parsedUrl, res) {
+    try {
+        const target = safePath(parsedUrl.searchParams.get('path'));
+        res.writeHead(200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${path.basename(target)}"`
+        });
+        fs.createReadStream(target).pipe(res);
+    } catch(e) { res.writeHead(404); res.end(e.message); }
+}
+
+function handleFileSearch(parsedUrl, res) {
+    try {
+        const q = parsedUrl.searchParams.get('q') || '';
+        const dir = safePath(parsedUrl.searchParams.get('dir') || '.');
+        const results = [];
+        function search(currentDir) {
+            if (results.length > 50) return;
+            const items = fs.readdirSync(currentDir, { withFileTypes: true });
+            for (const i of items) {
+                const full = path.join(currentDir, i.name);
+                if (i.name.toLowerCase().includes(q.toLowerCase())) {
+                    results.push({ name: i.name, path: path.relative(ROOT_DIR, full), isDir: i.isDirectory() });
+                }
+                if (i.isDirectory() && !['node_modules', '.git'].includes(i.name)) {
+                    search(full);
+                }
+            }
+        }
+        search(dir);
+        handleJson(res, results);
+    } catch(e) { handleJson(res, { error: e.message }); }
+}
+
+function handleFileUpload(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { path: p, contentBase64 } = JSON.parse(body);
+            const target = safePath(p);
+            const buffer = Buffer.from(contentBase64.split(',')[1], 'base64');
+            fs.writeFileSync(target, buffer);
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(500); res.end(e.message); }
+    });
+}
+
+function handleWifiScan(res) {
+    const platform = os.platform();
+    if (platform === 'darwin') {
+        // macOS fallback scan
+        exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s || networksetup -listallhardwareports", (err, stdout) => {
+            handleJson(res, []); // Simplified for now as full scan requires specific tools
+        });
+    } else {
+        wifi.scan((err, networks) => {
+            if (err) handleJson(res, []);
+            else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+        });
+    }
+}
+
+function handleWifiConnect(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { ssid, password } = JSON.parse(body);
+            const platform = os.platform();
+            if (platform === 'darwin') {
+                exec(`networksetup -setairportnetwork en0 "${ssid}" "${password}"`, (err, stdout) => {
+                    handleJson(res, { success: !err, output: stdout });
+                });
+            } else {
+                wifi.connect({ ssid, password }, (err) => {
+                    handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
+                });
+            }
+        } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
+    });
+}
+
+function handleBrightness(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { level } = JSON.parse(body); // 0-100
+            const platform = os.platform();
+            let cmd = "";
+            if (platform === 'darwin') {
+                cmd = `osascript -e 'tell application "System Events" to set value of attribute "AXValue" of slider 1 of group 1 of window 1 of process "System Settings" to ${level/100}'`;
+            } else if (platform === 'win32') {
+                cmd = `powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, ${level})`;
+            } else {
+                cmd = `brightness ${level/100} 2>/dev/null || xbacklight -set ${level} 2>/dev/null`;
+            }
+            exec(cmd, (err) => handleJson(res, { success: !err }));
+        } catch (e) { handleJson(res, { success: false }); }
     });
 }
 

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  aidash:
+    build: .
+    container_name: aidash-os
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config
+      - ./backend/users.json:/app/backend/users.json
+      - ./server.log:/app/server.log
+    # Privileged or specific caps might be needed for some hardware metrics in Docker
+    privileged: true
+    network_mode: "host" # Recommended for real network/wifi monitoring on Linux

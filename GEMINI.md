@@ -34,6 +34,12 @@
 - [x] Service Link Dashboard (Config-driven)
 - [x] Log Viewer & Real-time Filtering
 - [x] Disk Explorer (Real `df` and `du` calls)
+- [x] Full Interactive File Explorer (Browse, Read, Edit, Search, Upload)
+- [x] Advanced System Metrics (Per-core CPU, Temp, Ports, Users)
+- [x] AiDash OS Interface (System Bar, Date, Battery, Wi-Fi)
+- [x] Hardware Controls (Wi-Fi Scanning/Connecting, Brightness)
+- [x] Docker & Docker-Compose Support
+- [x] OS-Independent Metric Collection (systeminformation + node-wifi)
 - [x] AI Diagnostic Assistant (Context-aware)
 - [x] Keyboard-driven Command Palette (Ctrl+K)
 - [x] Modular Design (Feature toggles in config)
@@ -43,10 +49,10 @@
 ## Technical Details
 - **Credentials**: `admin` / `admin`
 - **Port**: 3000 (default)
+- **Deployment**: Docker-ready (`docker-compose up -d`)
 - **Whitelisted Commands**: `ls`, `df -h`, `uptime`, `free -m`, `du -sh`, `ps aux`, `tail -n 100`, `git pull`, `npm install`
 
 ## Future Roadmap
-- Implementation of a Full Interactive File Explorer (Browse, Read, and Edit files).
 - Expanded Deployment Helper (Custom scripts, service auto-restarts).
 - Support for external notifications (Webhooks, email).
 - Multi-user management UI.
