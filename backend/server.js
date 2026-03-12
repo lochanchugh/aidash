@@ -11,15 +11,17 @@ const CONFIG_PATH = path.join(__dirname, '../config/default.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
 const LOG_PATH = path.join(__dirname, '../server.log');
 
-const WHITELIST = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100'];
+// Whitelist for command execution
+const WHITELIST = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install'];
 
 let alerts = [];
 
 function evaluateAlerts() {
+    const config = getConfig();
+    if (config.modules && !config.modules.alerts) { alerts = []; return; }
+    
     const newAlerts = [];
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-    const memUsage = ((totalMem - freeMem) / totalMem) * 100;
+    const memUsage = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
     if (memUsage > 90) newAlerts.push({ type: 'Memory', message: `Critical: ${memUsage.toFixed(1)}%`, severity: 'danger' });
     const load = os.loadavg()[0];
     if (load > os.cpus().length * 0.9) newAlerts.push({ type: 'Load', message: `High: ${load.toFixed(2)}`, severity: 'danger' });
@@ -28,8 +30,14 @@ function evaluateAlerts() {
 setInterval(evaluateAlerts, 30000);
 evaluateAlerts();
 
+function getConfig() {
+    if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+    return { modules: { alerts: true, ai: true, logs: true, disk: true } };
+}
+
 const server = http.createServer((req, res) => {
     const { method, url } = req;
+    const config = getConfig();
 
     if (url === '/' && method === 'GET') {
         serveFile(res, path.join(__dirname, '../frontend/index.html'), 'text/html');
@@ -40,17 +48,19 @@ const server = http.createServer((req, res) => {
     } else if (url === '/api/services' && method === 'GET') {
         handleServices(res);
     } else if (url === '/api/config-services' && method === 'GET') {
-        handleConfigServices(res);
+        handleJson(res, config.services || []);
     } else if (url === '/api/alerts' && method === 'GET') {
         handleJson(res, alerts);
     } else if (url === '/api/disk' && method === 'GET') {
-        handleDisk(res);
+        if (config.modules.disk) handleDisk(res); else handleJson(res, { main: { usage: '0%' }, topDirs: [] });
     } else if (url === '/api/logs' && method === 'GET') {
-        handleLogs(res);
+        if (config.modules.logs) handleLogs(res); else res.end('Logs module disabled.');
     } else if (url === '/api/command' && method === 'POST') {
         handleCommand(req, res);
     } else if (url === '/api/ai/ask' && method === 'POST') {
-        handleAiAsk(req, res);
+        if (config.modules.ai) handleAiAsk(req, res); else handleJson(res, { text: 'AI module disabled.' });
+    } else if (url === '/api/deploy' && method === 'POST') {
+        handleDeploy(req, res);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -101,21 +111,11 @@ function handleServices(res) {
     });
 }
 
-function handleConfigServices(res) {
-    if (fs.existsSync(CONFIG_PATH)) {
-        const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-        handleJson(res, config.services || []);
-    } else {
-        handleJson(res, []);
-    }
-}
-
 function handleDisk(res) {
     exec('df -h /', (err, stdout) => {
         const lines = stdout.trim().split('\n');
         const p = lines[1].replace(/\s+/g, ' ').split(' ');
         const mainDisk = { path: '/', size: p[1], used: p[2], avail: p[3], usage: p[4] };
-        
         exec('du -sh * 2>/dev/null | sort -rh | head -n 5', (err2, stdout2) => {
             const dirs = (stdout2 || '').trim().split('\n').map(l => {
                 const parts = l.split('\t');
@@ -146,6 +146,13 @@ function handleCommand(req, res) {
     });
 }
 
+function handleDeploy(req, res) {
+    // Deployment helper: git pull && npm install && restart
+    exec('git pull && npm install', (err, stdout, stderr) => {
+        handleJson(res, { output: stdout || stderr, success: !err });
+    });
+}
+
 function handleAiAsk(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
@@ -154,7 +161,11 @@ function handleAiAsk(req, res) {
             const { prompt } = JSON.parse(body);
             const memUsage = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
             let text = memUsage > 80 ? "Memory is high. Check top processes." : "System is stable.";
-            handleJson(res, { text, suggestion: "ps aux" });
+            if (prompt.toLowerCase().includes('deploy')) {
+                handleJson(res, { text: "I can help you deploy. I suggest running git pull.", suggestion: "git pull" });
+            } else {
+                handleJson(res, { text, suggestion: "ps aux" });
+            }
         } catch (e) { res.writeHead(400); res.end('Bad Request'); }
     });
 }
