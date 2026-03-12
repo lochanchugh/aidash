@@ -19,6 +19,8 @@ const alerts = [
     { id: 2, type: 'Service', message: 'File Manager stopped unexpectedly', severity: 'danger', date: new Date().toISOString() }
 ];
 
+const WHITELIST = ['ls', 'df -h', 'uptime', 'npm -v'];
+
 const server = http.createServer((req, res) => {
     const { method, url } = req;
     console.log(`${method} ${url}`);
@@ -33,6 +35,10 @@ const server = http.createServer((req, res) => {
         handleJson(res, services);
     } else if (url === '/api/alerts' && method === 'GET') {
         handleJson(res, alerts);
+    } else if (url === '/api/disk' && method === 'GET') {
+        handleDisk(res);
+    } else if (url === '/api/command' && method === 'POST') {
+        handleCommand(req, res);
     } else if (url === '/api/ai/ask' && method === 'POST') {
         handleAiAsk(req, res);
     } else {
@@ -78,20 +84,41 @@ function handleLogin(req, res) {
                 res.end(JSON.stringify({ success: false, message: 'Invalid credentials' }));
             }
         } catch (e) {
-            res.writeHead(400);
-            res.end('Bad Request');
+            res.writeHead(400); res.end('Bad Request');
         }
     });
 }
 
 function handleStats(req, res) {
-    const stats = {
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        platform: process.platform,
-        load: [0.1, 0.2, 0.1]
-    };
+    const stats = { uptime: process.uptime(), memory: process.memoryUsage(), platform: process.platform, load: [0.1, 0.2, 0.1] };
     handleJson(res, stats);
+}
+
+function handleDisk(res) {
+    const diskData = [
+        { path: '/', size: '20GB', used: '15GB', avail: '5GB', usage: '75%' },
+        { path: '/var/log', size: '2GB', used: '1.2GB', avail: '0.8GB', usage: '60%' }
+    ];
+    handleJson(res, diskData);
+}
+
+function handleCommand(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { command } = JSON.parse(body);
+            if (!WHITELIST.includes(command)) {
+                res.writeHead(403); res.end('Command not whitelisted');
+                return;
+            }
+            exec(command, (err, stdout, stderr) => {
+                handleJson(res, { output: stdout || stderr });
+            });
+        } catch (e) {
+            res.writeHead(400); res.end('Bad Request');
+        }
+    });
 }
 
 function handleAiAsk(req, res) {
@@ -100,15 +127,10 @@ function handleAiAsk(req, res) {
     req.on('end', () => {
         try {
             const { prompt } = JSON.parse(body);
-            // Mock AI response for now
-            const answer = {
-                text: "Based on the logs, your server is experiencing high memory usage. I suggest restarting the API server.",
-                suggestion: "restart api-server"
-            };
+            const answer = { text: "I suggest checking the disk usage.", suggestion: "df -h" };
             handleJson(res, answer);
         } catch (e) {
-            res.writeHead(400);
-            res.end('Bad Request');
+            res.writeHead(400); res.end('Bad Request');
         }
     });
 }
