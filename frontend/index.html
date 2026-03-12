@@ -5,22 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AiDash - Server Dashboard</title>
     <style>
-        :root {
-            --bg: #111;
-            --text: #eee;
-            --primary: #007bff;
-            --secondary: #6c757d;
-            --success: #28a745;
-            --danger: #dc3545;
-            --card-bg: #222;
-        }
+        :root { --bg: #111; --text: #eee; --primary: #007bff; --secondary: #6c757d; --success: #28a745; --danger: #dc3545; --card-bg: #222; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; }
+        .container { max-width: 1200px; margin: auto; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
         .stat-value { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
         .stat-label { font-size: 14px; opacity: 0.7; }
-        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; background: var(--primary); color: white; font-weight: bold; }
+        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; background: var(--primary); color: white; font-weight: bold; transition: opacity 0.2s; }
         button:hover { opacity: 0.9; }
         .login-page { display: flex; align-items: center; justify-content: center; height: 100vh; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #444; background: #333; color: white; border-radius: 4px; box-sizing: border-box; }
@@ -29,14 +21,17 @@
         .alert-warning { border-color: orange; background: rgba(255, 165, 0, 0.1); }
         .alert-danger { border-color: var(--danger); background: rgba(220, 53, 69, 0.1); }
         .ai-chat { background: #1a1a1a; padding: 15px; border-radius: 8px; height: 250px; overflow-y: auto; display: flex; flex-direction: column; }
-        .ai-message { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-start; max-width: 80%; }
-        .user-message { background: var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-end; max-width: 80%; }
+        .ai-message { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-start; max-width: 80%; font-size: 14px; }
+        .user-message { background: var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-end; max-width: 80%; font-size: 14px; }
         .command-palette { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: 500px; background: #222; border: 1px solid #444; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; display: none; }
         .palette-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; }
         .palette-item:hover { background: #333; }
         .progress-bar { background: #444; border-radius: 10px; overflow: hidden; height: 10px; margin-top: 5px; }
         .progress-fill { background: var(--primary); height: 100%; }
-        .log-viewer { background: black; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; height: 300px; overflow-y: auto; margin-top: 20px; }
+        .log-viewer { background: black; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 11px; height: 200px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #333; }
+        th { opacity: 0.6; font-weight: normal; }
     </style>
 </head>
 <body>
@@ -53,11 +48,14 @@
     <div id="dashboard" class="container hidden">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h1>AiDash Dashboard</h1>
-            <button onclick="logout()">Logout</button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="role-badge" style="background: var(--secondary); padding: 2px 8px; border-radius: 10px; font-size: 12px;">...</span>
+                <button onclick="logout()" style="background: #444; padding: 5px 10px;">Logout</button>
+            </div>
         </div>
 
         <div class="grid">
-            <div class="card"><div id="cpu-stat" class="stat-value">...</div><div class="stat-label">System Load (1m)</div><div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="cpu-stat" class="stat-value">...</div><div class="stat-label">CPU Load (1m)</div><div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div></div>
             <div class="card"><div id="ram-stat" class="stat-value">...</div><div class="stat-label">RAM (Free / Total)</div><div class="progress-bar"><div id="ram-fill" class="progress-fill" style="width: 0%;"></div></div></div>
             <div class="card"><div id="disk-summary" class="stat-value">...</div><div class="stat-label">Disk Capacity</div><div class="progress-bar"><div id="disk-fill" class="progress-fill" style="width: 0%;"></div></div></div>
             <div class="card"><div id="uptime-stat" class="stat-value">...</div><div class="stat-label">System Uptime</div></div>
@@ -65,22 +63,29 @@
 
         <div class="grid">
             <div class="card">
-                <h3>Processes</h3>
-                <div id="services-list" style="max-height: 200px; overflow-y: auto;"></div>
+                <h3>Service Link Dashboard</h3>
+                <div id="config-services-list">Loading...</div>
             </div>
             <div class="card">
-                <h3>Alerts</h3>
-                <div id="alerts-list">No active alerts.</div>
-            </div>
-            <div class="card">
-                <h3>Disk Usage Explorer</h3>
-                <div id="disk-explorer"></div>
+                <h3>Top Processes (Node)</h3>
+                <table id="process-table"><thead><tr><th>PID</th><th>CPU%</th><th>MEM%</th><th>CMD</th></tr></thead><tbody id="process-list"></tbody></table>
             </div>
         </div>
 
         <div class="grid">
             <div class="card">
-                <h3>AI Assistant</h3>
+                <h3>System Alerts</h3>
+                <div id="alerts-list">No active alerts.</div>
+            </div>
+            <div class="card">
+                <h3>Disk: Top Folders</h3>
+                <div id="disk-explorer">Loading...</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>AI Assistant (Ctrl+K for commands)</h3>
                 <div id="ai-chat" class="ai-chat"></div>
                 <div style="display: flex; margin-top: 10px;">
                     <input type="text" id="ai-prompt" placeholder="Ask AI something..." style="margin: 0; margin-right: 10px;">
@@ -89,8 +94,11 @@
             </div>
             <div class="card">
                 <h3>System Logs</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                    <input type="text" id="log-filter" placeholder="Filter logs..." onkeyup="filterLogs()" style="margin: 0; padding: 5px;">
+                    <button onclick="fetchLogs()" style="background: var(--secondary); padding: 5px 10px; font-size: 12px;">Refresh</button>
+                </div>
                 <div id="log-viewer" class="log-viewer">Loading...</div>
-                <button onclick="fetchLogs()" style="margin-top: 10px; padding: 5px 10px; font-size: 12px; background: var(--secondary);">Refresh Logs</button>
             </div>
         </div>
     </div>
@@ -101,32 +109,27 @@
             <div class="palette-item" onclick="executeCommand('df -h')">Check Disk Usage</div>
             <div class="palette-item" onclick="executeCommand('ps aux')">List All Processes</div>
             <div class="palette-item" onclick="executeCommand('uptime')">System Uptime</div>
-            <div class="palette-item" onclick="executeCommand('ls -la')">List Project Files</div>
+            <div class="palette-item" onclick="executeCommand('ls -la')">List Files</div>
+            <div class="palette-item" onclick="executeCommand('tail -n 100 server.log')">View Recent Logs</div>
         </div>
     </div>
 
     <script>
+        let allLogs = "";
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
+            const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
             const data = await res.json();
-            if (data.success) {
-                localStorage.setItem('role', data.role);
-                showDashboard();
-            } else {
-                document.getElementById('login-error').textContent = data.message;
-            }
+            if (data.success) { localStorage.setItem('role', data.role); showDashboard(); }
+            else { document.getElementById('login-error').textContent = data.message; }
         }
 
         function showDashboard() {
             document.getElementById('login-container').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
-            fetchStats(); fetchServices(); fetchAlerts(); fetchDisk(); fetchLogs();
+            document.getElementById('role-badge').textContent = localStorage.getItem('role');
+            fetchStats(); fetchServices(); fetchAlerts(); fetchDisk(); fetchLogs(); fetchConfigServices();
             setInterval(fetchStats, 5000); setInterval(fetchDisk, 30000); setInterval(fetchLogs, 10000); setInterval(fetchServices, 15000);
         }
 
@@ -139,7 +142,6 @@
                 const freeGB = (data.freeMem / 1024 / 1024 / 1024).toFixed(1);
                 const totalGB = (data.totalMem / 1024 / 1024 / 1024).toFixed(1);
                 const ramUsage = ((data.totalMem - data.freeMem) / data.totalMem) * 100;
-                
                 document.getElementById('uptime-stat').textContent = Math.floor(data.uptime / 3600) + 'h ' + Math.floor((data.uptime % 3600) / 60) + 'm';
                 document.getElementById('ram-stat').textContent = (totalGB - freeGB).toFixed(1) + ' / ' + totalGB + ' GB';
                 document.getElementById('cpu-stat').textContent = load.toFixed(2);
@@ -148,61 +150,65 @@
             } catch (e) {}
         }
 
+        async function fetchConfigServices() {
+            const res = await fetch('/api/config-services');
+            const data = await res.json();
+            const list = document.getElementById('config-services-list');
+            list.innerHTML = data.map(s => `
+                <div style="margin-bottom: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong>${s.name}</strong><br><span style="font-size: 11px; opacity: 0.6;">Port: ${s.port}</span></div>
+                    <button onclick="window.open('http://' + window.location.hostname + ':' + ${s.port})" style="padding: 4px 8px; font-size: 12px; background: var(--secondary);">Open Link</button>
+                </div>
+            `).join('') || "No services in config.";
+        }
+
         async function fetchServices() {
             const res = await fetch('/api/services');
             const data = await res.json();
-            const list = document.getElementById('services-list');
-            list.innerHTML = data.map(s => `
-                <div style="margin-bottom: 5px; font-size: 13px; display: flex; justify-content: space-between; align-items: center;">
-                    <div>${s.name}</div>
-                    <span style="color: var(--success); font-size: 11px;">running</span>
-                </div>
-            `).join('');
+            const list = document.getElementById('process-list');
+            list.innerHTML = data.map(s => `<tr><td>${s.pid}</td><td>${s.cpu}%</td><td>${s.mem}%</td><td style="font-size: 10px; opacity: 0.7;">${s.cmd.substring(0, 30)}...</td></tr>`).join('');
         }
 
         async function fetchAlerts() {
             const res = await fetch('/api/alerts');
             const data = await res.json();
             const list = document.getElementById('alerts-list');
-            if (data.length === 0) { list.textContent = "No active alerts."; return; }
-            list.innerHTML = data.map(a => `
-                <div class="alert alert-${a.severity}"><strong>${a.type}</strong>: ${a.message}</div>
-            `).join('');
+            list.innerHTML = data.length === 0 ? "No active alerts." : data.map(a => `<div class="alert alert-${a.severity}"><strong>${a.type}</strong>: ${a.message}</div>`).join('');
         }
 
         async function fetchDisk() {
             try {
                 const res = await fetch('/api/disk');
                 const data = await res.json();
-                if (data.length === 0) return;
-                const list = document.getElementById('disk-explorer');
-                const d = data[0];
-                document.getElementById('disk-summary').textContent = d.usage;
-                document.getElementById('disk-fill').style.width = d.usage;
-                list.innerHTML = data.map(d => `
-                    <div style="margin-bottom: 10px;">
-                        <div style="font-size: 14px;"><strong>${d.path}</strong>: ${d.used} / ${d.size}</div>
-                        <div class="progress-bar"><div class="progress-fill" style="width: ${d.usage}; background: ${parseInt(d.usage) > 85 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                document.getElementById('disk-summary').textContent = data.main.usage;
+                document.getElementById('disk-fill').style.width = data.main.usage;
+                document.getElementById('disk-explorer').innerHTML = data.topDirs.map(d => `
+                    <div style="margin-bottom: 8px;">
+                        <div style="font-size: 13px; display: flex; justify-content: space-between;"><span>${d.name}</span><strong>${d.size}</strong></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width: 100%; background: var(--secondary); opacity: 0.3;"></div></div>
                     </div>
-                `).join('');
+                `).join('') || "No data.";
             } catch (e) {}
         }
 
         async function fetchLogs() {
             const res = await fetch('/api/logs');
-            const data = await res.text();
+            allLogs = await res.text();
+            filterLogs();
+        }
+
+        function filterLogs() {
+            const filter = document.getElementById('log-filter').value.toLowerCase();
             const viewer = document.getElementById('log-viewer');
-            viewer.textContent = data;
+            viewer.textContent = allLogs.split('\n').filter(l => l.toLowerCase().includes(filter)).join('\n');
             viewer.scrollTop = viewer.scrollHeight;
         }
 
         async function askAi() {
             const promptInput = document.getElementById('ai-prompt');
-            const prompt = promptInput.value;
-            if (!prompt) return;
+            const prompt = promptInput.value; if (!prompt) return;
             const chat = document.getElementById('ai-chat');
-            chat.innerHTML += `<div class="user-message">${prompt}</div>`;
-            promptInput.value = '';
+            chat.innerHTML += `<div class="user-message">${prompt}</div>`; promptInput.value = '';
             const res = await fetch('/api/ai/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
             const data = await res.json();
             chat.innerHTML += `<div class="ai-message">${data.text} ${data.suggestion ? `<br><br><button onclick="executeCommand('${data.suggestion}')">Approve: ${data.suggestion}</button>` : ''}</div>`;
@@ -215,21 +221,13 @@
             const res = await fetch('/api/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command }) });
             const data = await res.json();
             chat.innerHTML += `<div class="ai-message"><pre style="font-size: 10px; background: #000; padding: 5px; overflow-x: auto;">${data.output}</pre></div>`;
-            chat.scrollTop = chat.scrollHeight;
-            document.getElementById('command-palette').style.display = 'none';
+            chat.scrollTop = chat.scrollHeight; document.getElementById('command-palette').style.display = 'none';
         }
 
         function logout() { localStorage.removeItem('role'); location.reload(); }
-
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'k') {
-                e.preventDefault();
-                const palette = document.getElementById('command-palette');
-                palette.style.display = palette.style.display === 'block' ? 'none' : 'block';
-                if (palette.style.display === 'block') document.getElementById('palette-input').focus();
-            }
+            if (e.ctrlKey && e.key === 'k') { e.preventDefault(); const p = document.getElementById('command-palette'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; if (p.style.display === 'block') document.getElementById('palette-input').focus(); }
         });
-
         if (localStorage.getItem('role')) showDashboard();
     </script>
 </body>
