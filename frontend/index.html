@@ -15,9 +15,9 @@
             --card-bg: #222;
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; }
+        .container { max-width: 900px; margin: auto; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
         .stat-value { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
         .stat-label { font-size: 14px; opacity: 0.7; }
         button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; background: var(--primary); color: white; font-weight: bold; }
@@ -25,6 +25,16 @@
         .login-page { display: flex; align-items: center; justify-content: center; height: 100vh; }
         input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #444; background: #333; color: white; border-radius: 4px; box-sizing: border-box; }
         .hidden { display: none; }
+        .alert { padding: 10px; border-left: 5px solid; margin-bottom: 10px; }
+        .alert-warning { border-color: orange; background: rgba(255, 165, 0, 0.1); }
+        .alert-danger { border-color: var(--danger); background: rgba(220, 53, 69, 0.1); }
+        .ai-chat { background: #1a1a1a; padding: 15px; border-radius: 8px; height: 300px; overflow-y: auto; display: flex; flex-direction: column; }
+        .ai-message { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-start; max-width: 80%; }
+        .user-message { background: var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-end; max-width: 80%; }
+        .command-palette { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: 500px; background: #222; border: 1px solid #444; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; display: none; }
+        .palette-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; }
+        .palette-item:hover { background: #333; }
+        .palette-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -45,34 +55,40 @@
         </div>
 
         <div class="grid">
+            <div class="card"><div id="cpu-stat" class="stat-value">Loading...</div><div class="stat-label">CPU Usage</div></div>
+            <div class="card"><div id="ram-stat" class="stat-value">Loading...</div><div class="stat-label">RAM Usage</div></div>
+            <div class="card"><div id="disk-stat" class="stat-value">Loading...</div><div class="stat-label">Disk Usage</div></div>
+            <div class="card"><div id="uptime-stat" class="stat-value">Loading...</div><div class="stat-label">Uptime</div></div>
+        </div>
+
+        <div class="grid">
             <div class="card">
-                <div id="cpu-stat" class="stat-value">Loading...</div>
-                <div class="stat-label">CPU Usage</div>
+                <h3>Services</h3>
+                <div id="services-list"></div>
             </div>
             <div class="card">
-                <div id="ram-stat" class="stat-value">Loading...</div>
-                <div class="stat-label">RAM Usage</div>
-            </div>
-            <div class="card">
-                <div id="disk-stat" class="stat-value">Loading...</div>
-                <div class="stat-label">Disk Usage</div>
-            </div>
-            <div class="card">
-                <div id="uptime-stat" class="stat-value">Loading...</div>
-                <div class="stat-label">Uptime</div>
+                <h3>Alerts</h3>
+                <div id="alerts-list"></div>
             </div>
         </div>
 
-        <h2>Services</h2>
-        <div id="services-list" class="grid">
-            <div class="card">
-                <div class="stat-value">Web Server</div>
-                <div class="stat-label">Status: Running</div>
-                <div style="margin-top: 10px;">
-                    <button style="background: var(--danger);">Stop</button>
-                    <button>Logs</button>
-                </div>
+        <div class="card">
+            <h3>AI Assistant</h3>
+            <div id="ai-chat" class="ai-chat"></div>
+            <div style="display: flex; margin-top: 10px;">
+                <input type="text" id="ai-prompt" placeholder="Ask AI something..." style="margin: 0; margin-right: 10px;">
+                <button onclick="askAi()">Ask</button>
             </div>
+        </div>
+    </div>
+
+    <div id="command-palette" class="command-palette">
+        <input type="text" id="palette-input" placeholder="Type a command..." style="border: none; border-bottom: 1px solid #444; border-radius: 8px 8px 0 0;">
+        <div id="palette-items">
+            <div class="palette-item">Restart Nginx</div>
+            <div class="palette-item">Check Disk Usage</div>
+            <div class="palette-item">View Logs</div>
+            <div class="palette-item">Clear Cache</div>
         </div>
     </div>
 
@@ -98,6 +114,8 @@
             document.getElementById('login-container').classList.add('hidden');
             document.getElementById('dashboard').classList.remove('hidden');
             fetchStats();
+            fetchServices();
+            fetchAlerts();
             setInterval(fetchStats, 5000);
         }
 
@@ -107,13 +125,70 @@
             document.getElementById('uptime-stat').textContent = Math.floor(data.uptime) + 's';
             document.getElementById('ram-stat').textContent = Math.floor(data.memory.rss / 1024 / 1024) + ' MB';
             document.getElementById('cpu-stat').textContent = (data.load[0] * 100).toFixed(1) + '%';
-            document.getElementById('disk-stat').textContent = '205 GB'; // Mock
+            document.getElementById('disk-stat').textContent = '205 GB';
+        }
+
+        async function fetchServices() {
+            const res = await fetch('/api/services');
+            const data = await res.json();
+            const list = document.getElementById('services-list');
+            list.innerHTML = data.map(s => `
+                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                    <div><strong>${s.name}</strong> <span style="font-size: 12px; opacity: 0.7;">(port ${s.port})</span></div>
+                    <div>
+                        <span style="color: ${s.status === 'running' ? 'var(--success)' : 'var(--danger)'}; font-size: 12px; margin-right: 10px;">${s.status}</span>
+                        <button style="padding: 4px 8px; font-size: 12px;">Logs</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function fetchAlerts() {
+            const res = await fetch('/api/alerts');
+            const data = await res.json();
+            const list = document.getElementById('alerts-list');
+            list.innerHTML = data.map(a => `
+                <div class="alert alert-${a.severity}">
+                    <strong>${a.type}</strong>: ${a.message}
+                </div>
+            `).join('');
+        }
+
+        async function askAi() {
+            const promptInput = document.getElementById('ai-prompt');
+            const prompt = promptInput.value;
+            if (!prompt) return;
+            const chat = document.getElementById('ai-chat');
+            chat.innerHTML += `<div class="user-message">${prompt}</div>`;
+            promptInput.value = '';
+            
+            const res = await fetch('/api/ai/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt })
+            });
+            const data = await res.json();
+            chat.innerHTML += `<div class="ai-message">${data.text} ${data.suggestion ? `<br><br><button onclick="executeCommand('${data.suggestion}')">Approve: ${data.suggestion}</button>` : ''}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function executeCommand(cmd) {
+            alert('Executing: ' + cmd);
         }
 
         function logout() {
             localStorage.removeItem('role');
             location.reload();
         }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                const palette = document.getElementById('command-palette');
+                palette.style.display = palette.style.display === 'block' ? 'none' : 'block';
+                if (palette.style.display === 'block') document.getElementById('palette-input').focus();
+            }
+        });
 
         if (localStorage.getItem('role')) {
             showDashboard();
