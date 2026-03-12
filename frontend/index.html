@@ -15,9 +15,9 @@
             --card-bg: #222;
         }
         body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
+        .container { max-width: 1000px; margin: auto; }
         .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
         .stat-value { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
         .stat-label { font-size: 14px; opacity: 0.7; }
         button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; background: var(--primary); color: white; font-weight: bold; }
@@ -28,13 +28,15 @@
         .alert { padding: 10px; border-left: 5px solid; margin-bottom: 10px; }
         .alert-warning { border-color: orange; background: rgba(255, 165, 0, 0.1); }
         .alert-danger { border-color: var(--danger); background: rgba(220, 53, 69, 0.1); }
-        .ai-chat { background: #1a1a1a; padding: 15px; border-radius: 8px; height: 300px; overflow-y: auto; display: flex; flex-direction: column; }
+        .ai-chat { background: #1a1a1a; padding: 15px; border-radius: 8px; height: 250px; overflow-y: auto; display: flex; flex-direction: column; }
         .ai-message { background: #333; padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-start; max-width: 80%; }
         .user-message { background: var(--primary); padding: 10px; border-radius: 8px; margin-bottom: 10px; align-self: flex-end; max-width: 80%; }
         .command-palette { position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: 500px; background: #222; border: 1px solid #444; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 1000; display: none; }
         .palette-item { padding: 15px; border-bottom: 1px solid #333; cursor: pointer; }
         .palette-item:hover { background: #333; }
         .palette-item:last-child { border-bottom: none; }
+        .progress-bar { background: #444; border-radius: 10px; overflow: hidden; height: 10px; margin-top: 5px; }
+        .progress-fill { background: var(--primary); height: 100%; }
     </style>
 </head>
 <body>
@@ -55,9 +57,9 @@
         </div>
 
         <div class="grid">
-            <div class="card"><div id="cpu-stat" class="stat-value">Loading...</div><div class="stat-label">CPU Usage</div></div>
-            <div class="card"><div id="ram-stat" class="stat-value">Loading...</div><div class="stat-label">RAM Usage</div></div>
-            <div class="card"><div id="disk-stat" class="stat-value">Loading...</div><div class="stat-label">Disk Usage</div></div>
+            <div class="card"><div id="cpu-stat" class="stat-value">Loading...</div><div class="stat-label">CPU Usage</div><div class="progress-bar"><div id="cpu-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="ram-stat" class="stat-value">Loading...</div><div class="stat-label">RAM Usage</div><div class="progress-bar"><div id="ram-fill" class="progress-fill" style="width: 0%;"></div></div></div>
+            <div class="card"><div id="disk-stat" class="stat-value">Loading...</div><div class="stat-label">Disk Usage</div><div class="progress-bar"><div id="disk-fill" class="progress-fill" style="width: 0%;"></div></div></div>
             <div class="card"><div id="uptime-stat" class="stat-value">Loading...</div><div class="stat-label">Uptime</div></div>
         </div>
 
@@ -70,13 +72,17 @@
                 <h3>Alerts</h3>
                 <div id="alerts-list"></div>
             </div>
+            <div class="card">
+                <h3>Disk Explorer</h3>
+                <div id="disk-explorer"></div>
+            </div>
         </div>
 
         <div class="card">
             <h3>AI Assistant</h3>
             <div id="ai-chat" class="ai-chat"></div>
             <div style="display: flex; margin-top: 10px;">
-                <input type="text" id="ai-prompt" placeholder="Ask AI something..." style="margin: 0; margin-right: 10px;">
+                <input type="text" id="ai-prompt" placeholder="Ask AI something (e.g. 'check disk')" style="margin: 0; margin-right: 10px;">
                 <button onclick="askAi()">Ask</button>
             </div>
         </div>
@@ -85,10 +91,9 @@
     <div id="command-palette" class="command-palette">
         <input type="text" id="palette-input" placeholder="Type a command..." style="border: none; border-bottom: 1px solid #444; border-radius: 8px 8px 0 0;">
         <div id="palette-items">
-            <div class="palette-item">Restart Nginx</div>
-            <div class="palette-item">Check Disk Usage</div>
-            <div class="palette-item">View Logs</div>
-            <div class="palette-item">Clear Cache</div>
+            <div class="palette-item" onclick="executeCommand('df -h')">Check Disk Usage</div>
+            <div class="palette-item" onclick="executeCommand('ls')">List Files</div>
+            <div class="palette-item" onclick="executeCommand('uptime')">System Uptime</div>
         </div>
     </div>
 
@@ -116,16 +121,22 @@
             fetchStats();
             fetchServices();
             fetchAlerts();
+            fetchDisk();
             setInterval(fetchStats, 5000);
         }
 
         async function fetchStats() {
             const res = await fetch('/api/stats');
             const data = await res.json();
+            const cpu = (data.load[0] * 100).toFixed(1);
+            const ram = (data.memory.rss / 1024 / 1024).toFixed(0);
             document.getElementById('uptime-stat').textContent = Math.floor(data.uptime) + 's';
-            document.getElementById('ram-stat').textContent = Math.floor(data.memory.rss / 1024 / 1024) + ' MB';
-            document.getElementById('cpu-stat').textContent = (data.load[0] * 100).toFixed(1) + '%';
-            document.getElementById('disk-stat').textContent = '205 GB';
+            document.getElementById('ram-stat').textContent = ram + ' MB';
+            document.getElementById('cpu-stat').textContent = cpu + '%';
+            document.getElementById('disk-stat').textContent = '75%';
+            document.getElementById('cpu-fill').style.width = cpu + '%';
+            document.getElementById('ram-fill').style.width = (data.memory.rss / (256 * 1024 * 1024) * 100) + '%';
+            document.getElementById('disk-fill').style.width = '75%';
         }
 
         async function fetchServices() {
@@ -154,6 +165,18 @@
             `).join('');
         }
 
+        async function fetchDisk() {
+            const res = await fetch('/api/disk');
+            const data = await res.json();
+            const list = document.getElementById('disk-explorer');
+            list.innerHTML = data.map(d => `
+                <div style="margin-bottom: 10px;">
+                    <div><strong>${d.path}</strong>: ${d.used} / ${d.size}</div>
+                    <div class="progress-bar"><div class="progress-fill" style="width: ${d.usage}; background: ${parseInt(d.usage) > 80 ? 'var(--danger)' : 'var(--success)'}"></div></div>
+                </div>
+            `).join('');
+        }
+
         async function askAi() {
             const promptInput = document.getElementById('ai-prompt');
             const prompt = promptInput.value;
@@ -172,14 +195,25 @@
             chat.scrollTop = chat.scrollHeight;
         }
 
-        function executeCommand(cmd) {
-            alert('Executing: ' + cmd);
+        async function executeCommand(command) {
+            const chat = document.getElementById('ai-chat');
+            chat.innerHTML += `<div class="user-message">Executing: ${command}</div>`;
+            const res = await fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command })
+            });
+            if (res.status === 403) {
+                chat.innerHTML += `<div class="ai-message" style="color: var(--danger);">Command not whitelisted.</div>`;
+            } else {
+                const data = await res.json();
+                chat.innerHTML += `<div class="ai-message"><pre style="font-size: 10px;">${data.output}</pre></div>`;
+            }
+            chat.scrollTop = chat.scrollHeight;
+            document.getElementById('command-palette').style.display = 'none';
         }
 
-        function logout() {
-            localStorage.removeItem('role');
-            location.reload();
-        }
+        function logout() { localStorage.removeItem('role'); location.reload(); }
 
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey && e.key === 'k') {
@@ -190,9 +224,7 @@
             }
         });
 
-        if (localStorage.getItem('role')) {
-            showDashboard();
-        }
+        if (localStorage.getItem('role')) showDashboard();
     </script>
 </body>
 </html>
