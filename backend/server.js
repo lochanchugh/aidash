@@ -82,10 +82,11 @@ function handleLogin(req, res) {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
+            if (!body) throw new Error('Empty body');
             const { username, password } = JSON.parse(body);
             const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
             const user = users.find(u => u.username === username);
-            const hashed = crypto.createHash('sha256').update(password).digest('hex');
+            const hashed = crypto.createHash('sha256').update(password || '').digest('hex');
             if (user && user.password === hashed) {
                 res.writeHead(200, { 'Set-Cookie': `${SESSION_TOKEN}=admin; HttpOnly; Path=/`, 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, role: user.role }));
@@ -93,7 +94,10 @@ function handleLogin(req, res) {
                 res.writeHead(401, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: false, message: 'Invalid credentials' }));
             }
-        } catch (e) { res.writeHead(400); res.end('Bad Request'); }
+        } catch (e) { 
+            res.writeHead(400, { 'Content-Type': 'application/json' }); 
+            res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
+        }
     });
 }
 
@@ -142,7 +146,10 @@ function handleCommand(req, res) {
             const { command } = JSON.parse(body);
             if (!WHITELIST.some(w => command.startsWith(w))) { res.writeHead(403); res.end('Forbidden'); return; }
             exec(command, (err, stdout, stderr) => { handleJson(res, { output: stdout || stderr }); });
-        } catch (e) { res.writeHead(400); res.end('Bad Request'); }
+        } catch (e) { 
+            res.writeHead(400, { 'Content-Type': 'application/json' }); 
+            res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
+        }
     });
 }
 
@@ -166,7 +173,10 @@ function handleAiAsk(req, res) {
             } else {
                 handleJson(res, { text, suggestion: "ps aux" });
             }
-        } catch (e) { res.writeHead(400); res.end('Bad Request'); }
+        } catch (e) { 
+            res.writeHead(400, { 'Content-Type': 'application/json' }); 
+            res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
+        }
     });
 }
 

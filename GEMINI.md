@@ -16,31 +16,37 @@
 - **Disk Explorer**: Breakdown of top-consuming folders using real system calls (`df`, `du`).
 - **AI Assistant**: Diagnostic chat interface suggesting approved commands (never auto-executing).
 - **Command Palette**: Keyboard-driven (Ctrl+K) interface for whitelisted commands.
+- **Modular Design**: Ability to enable/disable features via configuration.
+- **Deployment Helper**: Integration for basic repository updates.
 
 ## Architecture
 - **Backend**: Node.js (`backend/server.js`) using built-in modules (`http`, `fs`, `os`, `crypto`, `child_process`).
-- **Frontend**: Vanilla HTML/JS/CSS (`frontend/index.html`) in a single-page application.
-- **Configuration**: JSON-based (`config/default.json`) for services and command whitelisting.
+- **Frontend**: Vanilla HTML/JS/CSS (`frontend/index.html`) - Refined Glassmorphism UI.
+- **Configuration**: JSON-based (`config/default.json`) for services, modules, and command whitelisting.
 
 ## Current Progress & Status
 - [x] Initial Project Structure & Git Workflow
 - [x] Backend Foundation & API Implementation
 - [x] Secure Authentication (SHA-256)
 - [x] Real-time Dashboard UI (Live Stats)
+- [x] Refined Glassmorphism UI Overhaul
 - [x] Process Monitoring (Real `ps aux` calls)
 - [x] Service Link Dashboard (Config-driven)
 - [x] Log Viewer & Real-time Filtering
 - [x] Disk Explorer (Real `df` and `du` calls)
 - [x] AI Diagnostic Assistant (Context-aware)
 - [x] Keyboard-driven Command Palette (Ctrl+K)
+- [x] Modular Design (Feature toggles in config)
+- [x] Deployment Helper (Basic `git pull` & `npm install`)
 - [x] Documentation & Open Source Quality README
 
 ## Technical Details
 - **Credentials**: `admin` / `admin`
 - **Port**: 3000 (default)
-- **Whitelisted Commands**: `ls`, `df -h`, `uptime`, `free -m`, `du -sh`, `ps aux`, `tail -n 100`
+- **Whitelisted Commands**: `ls`, `df -h`, `uptime`, `free -m`, `du -sh`, `ps aux`, `tail -n 100`, `git pull`, `npm install`
 
 ## Future Roadmap
-- Implementation of the modular design (enabling/disabling modules via config).
-- Expanded Deployment Helper (Git pull, dependency install, restart).
+- Implementation of a Full Interactive File Explorer (Browse, Read, and Edit files).
+- Expanded Deployment Helper (Custom scripts, service auto-restarts).
 - Support for external notifications (Webhooks, email).
+- Multi-user management UI.
