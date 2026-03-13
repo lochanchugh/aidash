@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     network-manager \
     iproute2 \
     procps \
+    && npm install -g @google/gemini-cli \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
