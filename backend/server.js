@@ -160,10 +160,6 @@ const server = http.createServer((req, res) => {
         handleWifiConnect(req, res);
     } else if (url === '/api/modules' && method === 'GET') {
         handleJson(res, config.modules || {});
-    } else if (url === '/api/gemini/status' && method === 'GET') {
-        handleGeminiStatus(res, config);
-    } else if (url === '/api/gemini/run' && method === 'POST') {
-        handleGeminiRun(req, res, config);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -282,43 +278,26 @@ function handleAiAsk(req, res) {
             const stats = {
                 uptime: os.uptime(),
                 load: os.loadavg(),
-                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100,
-                platform: os.platform(),
-                hostname: os.hostname()
+                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
             };
             
-            const config = getConfig();
-            const geminiCmd = config.geminiPath || 'gemini';
-            
-            const contextPrompt = `You are a server assistant.
-Context:
-System: ${stats.platform} (${stats.hostname})
-Uptime: ${stats.uptime}s
-Load: ${stats.load.join(', ')}
-RAM Usage: ${stats.mem.toFixed(1)}%
-${contextFile ? `User is viewing: ${contextFile}` : ''}
+            let response = { text: "I'm currently in offline mode. Ask me about CPU load, memory, or disk space.", suggestion: null };
 
-Question: ${prompt}
+            const p = prompt.toLowerCase();
+            if (p.includes('load') || p.includes('cpu')) {
+                response.text = `CPU load is ${stats.load[0].toFixed(2)}. ${stats.load[0] > 1.0 ? "It's a bit high." : "Looking good!"}`;
+                response.suggestion = "ps aux";
+            } else if (p.includes('mem') || p.includes('ram')) {
+                response.text = `RAM usage is at ${stats.mem.toFixed(1)}%.`;
+                response.suggestion = "free -m";
+            } else if (p.includes('disk') || p.includes('space')) {
+                response.text = "You should check your disk partitions.";
+                response.suggestion = "df -h";
+            } else if (p.includes('who are you')) {
+                response.text = "I am the AiDash Assistant (Offline Mode).";
+            }
 
-Rules:
-1. Be concise.
-2. If a command helps, add "SUGGESTION: command" at the end.
-3. Only suggest: ${config.whitelist.join(', ')}
-`;
-
-            exec(`${geminiCmd} "${contextPrompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
-                const output = stdout || stderr || "Assistant unavailable.";
-                let suggestion = null;
-                const match = output.match(/SUGGESTION:\s*(.+)/i);
-                if (match) {
-                    suggestion = match[1].trim();
-                }
-                
-                handleJson(res, { 
-                    text: output.replace(/SUGGESTION:\s*.+/i, '').trim(), 
-                    suggestion: (suggestion && config.whitelist.some(w => suggestion.startsWith(w))) ? suggestion : null
-                });
-            });
+            handleJson(res, response);
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
@@ -436,33 +415,30 @@ function handleWifiScan(res) {
     const platform = os.platform();
     if (platform === 'darwin') {
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
-            let networks = [];
+            const networks = [];
             if (!err && stdout) {
-                const lines = stdout.split('\n').slice(1);
-                for (const line of lines) {
+                stdout.split('\n').slice(1).forEach(line => {
                     const ssid = line.trim().split(/\s{2,}/)[0];
                     if (ssid && ssid !== 'SSID' && !ssid.startsWith('--')) networks.push({ ssid, signal: 'N/A' });
-                }
+                });
             }
-            // Deduplicate SSIDs
             const unique = Array.from(new Set(networks.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
             handleJson(res, unique);
         });
     } else {
-        wifi.scan((err, networks) => {
-            if (err || !networks || networks.length === 0) {
-                // Fallback to nmcli with explicit list command
-                exec("nmcli -t -f SSID dev wifi list || nmcli -t -f SSID dev wifi", (err2, stdout2) => {
-                    if (err2) return handleJson(res, []);
-                    const found = stdout2.split('\n')
-                        .map(s => s.trim())
-                        .filter(s => s && s !== 'SSID')
-                        .map(s => ({ ssid: s, signal: 'N/A' }));
-                    const unique = Array.from(new Set(found.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
-                    handleJson(res, unique);
-                });
+        exec("nmcli -t -f SSID dev wifi list --rescan yes || nmcli -t -f SSID dev wifi", (err, stdout) => {
+            if (!err && stdout) {
+                const found = stdout.split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s && s !== 'SSID')
+                    .map(s => ({ ssid: s, signal: 'N/A' }));
+                const unique = Array.from(new Set(found.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
+                handleJson(res, unique);
             } else {
-                handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+                wifi.scan((err2, nets) => {
+                    if (err2) return handleJson(res, []);
+                    handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+                });
             }
         });
     }
@@ -483,26 +459,6 @@ function handleWifiConnect(req, res) {
                     handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
                 });
             }
-        } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
-    });
-}
-
-function handleGeminiStatus(res, config) {
-    const geminiCmd = config.geminiPath || 'gemini';
-    exec(`${geminiCmd} --version`, (err) => {
-        handleJson(res, { available: !err });
-    });
-}
-
-function handleGeminiRun(req, res, config) {
-    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
-        try {
-            const { prompt } = JSON.parse(body);
-            const geminiCmd = config.geminiPath || 'gemini';
-            exec(`${geminiCmd} "${prompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
-                handleJson(res, { output: stdout || stderr, success: !err });
-            });
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
     });
 }
