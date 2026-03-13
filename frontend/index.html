@@ -164,7 +164,7 @@
                 <div id="mem-val" class="stat-val">0.0 / 0.0 GB</div>
                 <div class="bar-bg"><div id="mem-bar" class="bar-fill" style="width: 0%"></div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="disk-card">
                 <div class="stat-label">DISK CAPACITY</div>
                 <div id="disk-val" class="stat-val">0%</div>
                 <div class="bar-bg"><div id="disk-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
@@ -205,18 +205,6 @@
         </div>
 
         <div class="grid" style="grid-template-columns: 1fr 1fr;">
-            <section class="glass-card" id="gemini-section">
-                <h3>Gemini CLI Interface</h3>
-                <div id="gemini-chat" class="chat-area" style="height: 200px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; padding: 12px; font-family: monospace; font-size: 12px;">
-                    <div style="opacity: 0.5;">Gemini CLI status: Checking...</div>
-                </div>
-                <div id="gemini-controls" class="hidden" style="display: flex; gap: 8px;">
-                    <input type="text" id="gemini-input" placeholder="Enter prompt for Gemini CLI..." onkeyup="if(event.key==='Enter') runGemini()">
-                    <button onclick="runGemini()">Execute</button>
-                </div>
-                <div id="gemini-notice" style="font-size: 11px; color: var(--danger);"></div>
-            </section>
-
             <section class="glass-card">
                 <h3>Network Management</h3>
                 <div style="margin-bottom: 16px;">
@@ -237,7 +225,7 @@
         </div>
 
         <!-- File Explorer -->
-        <div class="grid" style="grid-template-columns: 1fr;">
+        <div class="grid" style="grid-template-columns: 1fr;" id="files-section">
             <section class="glass-card">
                 <h3>Interactive File Explorer</h3>
                 <div style="display: flex; gap: 12px; margin-bottom: 12px; align-items: center;">
@@ -264,14 +252,14 @@
                 <h3>Service Monitoring</h3>
                 <div id="svc-links"></div>
             </section>
-            <section class="glass-card">
+            <section class="glass-card" id="alerts-section">
                 <h3>Security & Load Alerts</h3>
                 <div id="alerts-area">No critical threats detected.</div>
             </section>
         </div>
 
-        <div class="grid">
-            <section class="glass-card">
+        <div class="grid" id="logs-ai-grid">
+            <section class="glass-card" id="logs-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3>System Runtime Logs</h3>
                     <input type="text" id="log-q" placeholder="Filter..." onkeyup="refreshLogs()" style="width: 200px; padding: 6px 12px;">
@@ -279,7 +267,7 @@
                 <div id="logs-out" class="logs-pre">Streaming logs...</div>
             </section>
 
-            <section class="glass-card">
+            <section class="glass-card" id="ai-section">
                 <h3>Diagnostic Assistant</h3>
                 <div id="chat-box" class="chat-area"></div>
                 <div style="display: flex; gap: 8px; margin-top: 16px;">
@@ -348,11 +336,21 @@
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('main-dashboard').classList.remove('hidden');
             document.getElementById('sys-bar').style.display = 'flex';
+            checkModules();
             refreshAll();
             browseFiles();
-            checkGemini();
             setInterval(refreshAll, 5000);
             setInterval(refreshLogs, 10000);
+        }
+
+        async function checkModules() {
+            const mods = await API.get('/api/modules');
+            if (mods.alerts === false) document.getElementById('alerts-section').classList.add('hidden');
+            if (mods.logs === false) document.getElementById('logs-section').classList.add('hidden');
+            if (mods.ai === false) document.getElementById('ai-section').classList.add('hidden');
+            if (mods.files === false) document.getElementById('files-section').classList.add('hidden');
+            if (mods.disk === false) document.getElementById('disk-card').classList.add('hidden');
+            if (mods.logs === false && mods.ai === false) document.getElementById('logs-ai-grid').classList.add('hidden');
         }
 
         async function refreshAll() {
@@ -417,28 +415,6 @@
             document.getElementById('modal').classList.remove('hidden');
         }
         function closeModal() { document.getElementById('modal').classList.add('hidden'); }
-
-        async function checkGemini() {
-            const res = await API.get('/api/gemini/status');
-            const chat = document.getElementById('gemini-chat');
-            if (res.available) {
-                chat.innerHTML = `<div style="color:var(--success)">Gemini CLI detected. Ready for commands.</div>`;
-                document.getElementById('gemini-controls').classList.remove('hidden');
-            } else {
-                chat.innerHTML = `<div style="color:var(--danger)">Gemini CLI not found on server path.</div>`;
-                document.getElementById('gemini-notice').textContent = "Install Gemini CLI to enable this section.";
-            }
-        }
-
-        async function runGemini() {
-            const prompt = document.getElementById('gemini-input').value; if(!prompt) return;
-            const chat = document.getElementById('gemini-chat');
-            chat.innerHTML += `<div style="color:var(--primary); margin-top:10px;">> ${prompt}</div>`;
-            document.getElementById('gemini-input').value = '';
-            const res = await API.post('/api/gemini/run', { prompt });
-            chat.innerHTML += `<div style="margin-top:5px; white-space: pre-wrap;">${res.output}</div>`;
-            chat.scrollTop = chat.scrollHeight;
-        }
 
         async function scanWifi() {
             const list = await API.get('/api/wifi/scan');

@@ -158,10 +158,12 @@ const server = http.createServer((req, res) => {
         handleWifiScan(res);
     } else if (url === '/api/wifi/connect' && method === 'POST') {
         handleWifiConnect(req, res);
+    } else if (url === '/api/modules' && method === 'GET') {
+        handleJson(res, config.modules || {});
     } else if (url === '/api/gemini/status' && method === 'GET') {
-        handleGeminiStatus(res);
+        handleGeminiStatus(res, config);
     } else if (url === '/api/gemini/run' && method === 'POST') {
-        handleGeminiRun(req, res);
+        handleGeminiRun(req, res, config);
     } else {
         res.writeHead(404); res.end('Not Found');
     }
@@ -276,35 +278,47 @@ function handleAiAsk(req, res) {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
-            const { prompt, contextFile, contextContent } = JSON.parse(body);
+            const { prompt, contextFile } = JSON.parse(body);
             const stats = {
                 uptime: os.uptime(),
                 load: os.loadavg(),
-                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
+                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100,
+                platform: os.platform(),
+                hostname: os.hostname()
             };
             
-            let response = { text: "I'm not sure how to help with that. Try asking about system load, memory, or deployment.", suggestion: null };
+            const config = getConfig();
+            const geminiCmd = config.geminiPath || 'gemini';
+            
+            const contextPrompt = `You are a server assistant.
+Context:
+System: ${stats.platform} (${stats.hostname})
+Uptime: ${stats.uptime}s
+Load: ${stats.load.join(', ')}
+RAM Usage: ${stats.mem.toFixed(1)}%
+${contextFile ? `User is viewing: ${contextFile}` : ''}
 
-            const p = prompt.toLowerCase();
-            if (contextFile && (p.includes('fix') || p.includes('error'))) {
-                response.text = `I see you are looking at ${contextFile}. While I am a lightweight offline assistant, I recommend checking syntax and recent changes in this file.`;
-            } else if (p.includes('load') || p.includes('cpu')) {
-                response.text = `Current CPU load averages are ${stats.load.map(l => l.toFixed(2)).join(', ')}. ${stats.load[0] > 1.0 ? "Load is slightly elevated." : "System load is healthy."}`;
-                response.suggestion = "ps aux";
-            } else if (p.includes('mem') || p.includes('ram')) {
-                response.text = `Memory usage is currently at ${stats.mem.toFixed(1)}%. ${stats.mem > 80 ? "You might want to check for memory-heavy processes." : "Memory usage is well within limits."}`;
-                response.suggestion = "free -m";
-            } else if (p.includes('disk') || p.includes('space')) {
-                response.text = "Checking disk space might be a good idea if you're worried about storage.";
-                response.suggestion = "df -h";
-            } else if (p.includes('deploy') || p.includes('update')) {
-                response.text = "Ready to deploy? I can pull the latest changes and install dependencies.";
-                response.suggestion = "git pull && npm install";
-            } else if (p.includes('who are you') || p.includes('gemini')) {
-                response.text = "I am the AiDash Assistant, powered by the spirit of Gemini CLI. I help you monitor and manage your server.";
-            }
+Question: ${prompt}
 
-            handleJson(res, response);
+Rules:
+1. Be concise.
+2. If a command helps, add "SUGGESTION: command" at the end.
+3. Only suggest: ${config.whitelist.join(', ')}
+`;
+
+            exec(`${geminiCmd} "${contextPrompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
+                const output = stdout || stderr || "Assistant unavailable.";
+                let suggestion = null;
+                const match = output.match(/SUGGESTION:\s*(.+)/i);
+                if (match) {
+                    suggestion = match[1].trim();
+                }
+                
+                handleJson(res, { 
+                    text: output.replace(/SUGGESTION:\s*.+/i, '').trim(), 
+                    suggestion: (suggestion && config.whitelist.some(w => suggestion.startsWith(w))) ? suggestion : null
+                });
+            });
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
@@ -421,13 +435,28 @@ function handleFileUpload(req, res) {
 function handleWifiScan(res) {
     const platform = os.platform();
     if (platform === 'darwin') {
-        exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s || networksetup -listallhardwareports", (err, stdout) => {
-            handleJson(res, []); 
+        exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
+            const networks = [];
+            if (!err && stdout) {
+                const lines = stdout.split('\n').slice(1);
+                for (const line of lines) {
+                    const ssid = line.trim().split(/\s{2,}/)[0];
+                    if (ssid && ssid !== 'SSID') networks.push({ ssid, signal: 'N/A' });
+                }
+            }
+            handleJson(res, networks);
         });
     } else {
         wifi.scan((err, networks) => {
-            if (err) handleJson(res, []);
-            else handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+            if (err) {
+                exec("nmcli -t -f SSID dev wifi", (err2, stdout2) => {
+                    if (err2) return handleJson(res, []);
+                    const n = stdout2.split('\n').filter(s => s).map(s => ({ ssid: s, signal: 'N/A' }));
+                    handleJson(res, n);
+                });
+            } else {
+                handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+            }
         });
     }
 }
@@ -451,18 +480,20 @@ function handleWifiConnect(req, res) {
     });
 }
 
-function handleGeminiStatus(res) {
-    exec('gemini --version', (err) => {
+function handleGeminiStatus(res, config) {
+    const geminiCmd = config.geminiPath || 'gemini';
+    exec(`${geminiCmd} --version`, (err) => {
         handleJson(res, { available: !err });
     });
 }
 
-function handleGeminiRun(req, res) {
+function handleGeminiRun(req, res, config) {
     let body = ''; req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
             const { prompt } = JSON.parse(body);
-            exec(`gemini "${prompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
+            const geminiCmd = config.geminiPath || 'gemini';
+            exec(`${geminiCmd} "${prompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
                 handleJson(res, { output: stdout || stderr, success: !err });
             });
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
