@@ -426,14 +426,14 @@ function handleWifiScan(res) {
             handleJson(res, unique);
         });
     } else {
-        exec("nmcli -t -f SSID dev wifi list --rescan yes || nmcli -t -f SSID dev wifi", (err, stdout) => {
+        // Linux: direct nmcli command for SSID list
+        exec("nmcli -t -f SSID dev wifi | sort -u", (err, stdout) => {
             if (!err && stdout) {
-                const found = stdout.split('\n')
+                const networks = stdout.split('\n')
                     .map(s => s.trim())
                     .filter(s => s && s !== 'SSID')
                     .map(s => ({ ssid: s, signal: 'N/A' }));
-                const unique = Array.from(new Set(found.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
-                handleJson(res, unique);
+                handleJson(res, networks);
             } else {
                 wifi.scan((err2, nets) => {
                     if (err2) return handleJson(res, []);

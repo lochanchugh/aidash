@@ -128,7 +128,7 @@
             <div class="item" id="bar-date">...</div>
         </div>
         <div class="right">
-            <div class="item" id="bar-wifi">📶 ...</div>
+            <div class="item" id="bar-wifi" onclick="scrollToSection('network-section')" style="cursor: pointer;">📶 ...</div>
             <div class="item" id="bar-battery">🔋 ...</div>
             <div class="item" id="bar-user" style="opacity: 0.6;">👤 ...</div>
         </div>
@@ -205,7 +205,7 @@
         </div>
 
         <div class="grid" style="grid-template-columns: 1fr 1fr;">
-            <section class="glass-card">
+            <section class="glass-card" id="network-section">
                 <h3>Network Management</h3>
                 <div style="margin-bottom: 16px;">
                     <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px;">
@@ -505,6 +505,15 @@
             const res = await API.post('/api/ai/ask', { prompt, contextFile: currentFile });
             chat.innerHTML += `<div class="msg ai">${res.text} ${res.suggestion ? `<br><br><button onclick="execCmd('${res.suggestion}')">Approve: ${res.suggestion}</button>` : ''}</div>`;
             chat.scrollTop = chat.scrollHeight;
+        }
+
+        function scrollToSection(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth' });
+            el.style.borderColor = 'var(--primary)';
+            el.style.boxShadow = '0 0 20px var(--primary-glow)';
+            setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = ''; }, 2000);
         }
 
         function togglePalette() { document.getElementById('palette').classList.toggle('hidden'); if(!palette.classList.contains('hidden')) document.getElementById('pal-input').focus(); }
