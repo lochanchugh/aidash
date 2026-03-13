@@ -436,23 +436,30 @@ function handleWifiScan(res) {
     const platform = os.platform();
     if (platform === 'darwin') {
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
-            const networks = [];
+            let networks = [];
             if (!err && stdout) {
                 const lines = stdout.split('\n').slice(1);
                 for (const line of lines) {
                     const ssid = line.trim().split(/\s{2,}/)[0];
-                    if (ssid && ssid !== 'SSID') networks.push({ ssid, signal: 'N/A' });
+                    if (ssid && ssid !== 'SSID' && !ssid.startsWith('--')) networks.push({ ssid, signal: 'N/A' });
                 }
             }
-            handleJson(res, networks);
+            // Deduplicate SSIDs
+            const unique = Array.from(new Set(networks.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
+            handleJson(res, unique);
         });
     } else {
         wifi.scan((err, networks) => {
-            if (err) {
-                exec("nmcli -t -f SSID dev wifi", (err2, stdout2) => {
+            if (err || !networks || networks.length === 0) {
+                // Fallback to nmcli with explicit list command
+                exec("nmcli -t -f SSID dev wifi list || nmcli -t -f SSID dev wifi", (err2, stdout2) => {
                     if (err2) return handleJson(res, []);
-                    const n = stdout2.split('\n').filter(s => s).map(s => ({ ssid: s, signal: 'N/A' }));
-                    handleJson(res, n);
+                    const found = stdout2.split('\n')
+                        .map(s => s.trim())
+                        .filter(s => s && s !== 'SSID')
+                        .map(s => ({ ssid: s, signal: 'N/A' }));
+                    const unique = Array.from(new Set(found.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
+                    handleJson(res, unique);
                 });
             } else {
                 handleJson(res, networks.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
