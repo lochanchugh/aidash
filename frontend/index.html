@@ -118,6 +118,7 @@
         .modal-content { width: 800px; max-height: 80vh; background: #1a1a1e; border: 1px solid var(--card-border); border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .modal-header { padding: 16px 24px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 24px; overflow-y: auto; flex-grow: 1; font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: pre-wrap; background: #000; color: #10b981; }
+        .modal-body select, .modal-body input { background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: white; padding: 10px; border-radius: 8px; margin-bottom: 12px; width: 100%; }
         .modal-footer { padding: 12px 24px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end; }
     </style>
 </head>
@@ -128,7 +129,7 @@
             <div class="item" id="bar-date">...</div>
         </div>
         <div class="right">
-            <div class="item" id="bar-wifi" onclick="scrollToSection('network-section')" style="cursor: pointer;">📶 ...</div>
+            <div class="item" id="bar-wifi" onclick="openWifiModal()" style="cursor: pointer;">📶 ...</div>
             <div class="item" id="bar-battery">🔋 ...</div>
             <div class="item" id="bar-user" style="opacity: 0.6;">👤 ...</div>
         </div>
@@ -204,7 +205,7 @@
             </section>
         </div>
 
-        <div class="grid" style="grid-template-columns: 1fr 1fr;">
+        <div class="grid hidden" style="grid-template-columns: 1fr 1fr;" id="network-grid">
             <section class="glass-card" id="network-section">
                 <h3>Network Management</h3>
                 <div style="margin-bottom: 16px;">
@@ -418,14 +419,14 @@
 
         async function scanWifi() {
             const list = await API.get('/api/wifi/scan');
-            const select = document.getElementById('wifi-list');
-            select.innerHTML = '<option value="">Choose Network...</option>' + list.map(n => `<option value="${n.ssid}">${n.ssid} (${n.signal})</option>`).join('');
+            const select = document.querySelector('.modal-body #wifi-list') || document.getElementById('wifi-list');
+            if (select) select.innerHTML = '<option value="">Choose Network...</option>' + list.map(n => `<option value="${n.ssid}">${n.ssid} (${n.signal})</option>`).join('');
         }
 
         async function connectWifi() {
-            const ssid = document.getElementById('wifi-list').value;
-            const password = document.getElementById('wifi-pass').value;
-            const status = document.getElementById('wifi-status');
+            const ssid = (document.querySelector('.modal-body #wifi-list') || document.getElementById('wifi-list')).value;
+            const password = (document.querySelector('.modal-body #wifi-pass') || document.getElementById('wifi-pass')).value;
+            const status = document.querySelector('.modal-body #wifi-status') || document.getElementById('wifi-status');
             if (!ssid) return;
             status.textContent = 'Connecting...';
             const res = await API.post('/api/wifi/connect', { ssid, password });
@@ -505,6 +506,13 @@
             const res = await API.post('/api/ai/ask', { prompt, contextFile: currentFile });
             chat.innerHTML += `<div class="msg ai">${res.text} ${res.suggestion ? `<br><br><button onclick="execCmd('${res.suggestion}')">Approve: ${res.suggestion}</button>` : ''}</div>`;
             chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function openWifiModal() {
+            const content = document.getElementById('network-section').innerHTML;
+            showModal('Wireless Configuration', '');
+            document.getElementById('modal-body').innerHTML = `<div style="padding: 10px;">${content}</div>`;
+            scanWifi(); // Auto-scan when opening
         }
 
         function scrollToSection(id) {
