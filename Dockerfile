@@ -19,9 +19,6 @@ WORKDIR /app
 # Ensure root is in the netdev group for WiFi socket access
 RUN usermod -a -G netdev root || true
 
-# Symlink the socket path to ensure wpa_cli always finds it
-RUN mkdir -p /var/run && ln -s /run/wpa_supplicant /var/run/wpa_supplicant || true
-
 COPY package*.json ./
 RUN npm install --production
 COPY . .

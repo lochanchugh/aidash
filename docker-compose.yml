@@ -14,10 +14,10 @@ services:
       - ./server.log:/app/server.log
       - /:/host:rw
       - /var/run/dbus:/var/run/dbus
-      - /run/wpa_supplicant:/run/wpa_supplicant
+      # Using /var/run/wpa_supplicant to avoid symlink recursion errors
+      - /var/run/wpa_supplicant:/var/run/wpa_supplicant
     privileged: true
     network_mode: "host"
-    # New: Disable AppArmor/SELinux blocks for unix sockets
     security_opt:
       - apparmor:unconfined
     ipc: host

@@ -86,7 +86,7 @@ async function updateMetrics() {
         } else if (platform === 'linux') {
             const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
             const iface = "wlp0s20f3";
-            const wpa = "wpa_cli -p /run/wpa_supplicant -i " + iface;
+            const wpa = "wpa_cli -p /var/run/wpa_supplicant -i " + iface;
             // Try wpa_cli with specific socket and interface
             exec(`${wpa} status | grep '^ssid=' | cut -d= -f2`, (err, stdout) => {
                 if (!err && stdout.trim()) {
@@ -492,7 +492,7 @@ function handleWifiScan(res) {
         // Linux Extreme Scan: Try wpa_cli with socket path and wait for results
         const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
         const iface = "wlp0s20f3";
-        const wpa = "wpa_cli -p /run/wpa_supplicant -i " + iface;
+        const wpa = "wpa_cli -p /var/run/wpa_supplicant -i " + iface;
         
         // Trigger scan and wait 5 seconds before requesting results
         exec(`${wpa} scan`, (scanErr, scanStdout, scanStderr) => {
