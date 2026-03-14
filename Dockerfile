@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     wireless-tools \
     network-manager \
     wpasupplicant \
+    iw \
     iproute2 \
     procps \
     && npm install -g @google/gemini-cli \
@@ -15,17 +16,15 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy package files first for caching
+# Ensure root is in the netdev group for WiFi socket access
+RUN usermod -a -G netdev root || true
+
+# Symlink the socket path to ensure wpa_cli always finds it
+RUN mkdir -p /var/run && ln -s /run/wpa_supplicant /var/run/wpa_supplicant || true
+
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install --production
-
-# Copy the rest of the application
 COPY . .
 
-# Expose the application port
 EXPOSE 3000
-
-# Start the application
 CMD ["npm", "start"]

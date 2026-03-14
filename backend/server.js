@@ -496,31 +496,41 @@ function handleWifiScan(res) {
         
         // Trigger scan and wait 5 seconds before requesting results
         exec(`${wpa} scan`, (scanErr, scanStdout, scanStderr) => {
-            if (scanErr) fs.appendFileSync(LOG_PATH, `[Scan Trigger Error] ${scanStderr || scanErr.message}\n`);
+            if (scanErr || scanStderr) {
+                sysMetrics.wifiError = `Scan Trigger Fail: ${scanStderr || scanErr.message}`;
+            }
             setTimeout(() => {
-                exec(`${wpa} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout, stderr) => {
-                    if (err) fs.appendFileSync(LOG_PATH, `[Scan Results Error] ${stderr || err.message}\n`);
-                    let ssids = (stdout || '').split('\n')
-                        .map(s => s.trim())
-                        .filter(s => s && s.length > 0);
+                exec(`${wpa} scan_results`, (err, stdout, stderr) => {
+                    if (err || stderr) {
+                        sysMetrics.wifiError = `Results Fail: ${stderr || err.message}`;
+                    }
+                    
+                    let lines = (stdout || '').split('\n');
+                    let ssids = lines
+                        .map(line => {
+                            const parts = line.split('\t');
+                            return parts.length > 4 ? parts[4].trim() : '';
+                        })
+                        .filter(s => s && s !== 'ssid' && s.length > 0);
 
                     if (ssids.length > 0) {
-                        handleJson(res, ssids.map(s => ({ ssid: s, signal: 'Server' })));
+                        sysMetrics.wifiError = '';
+                        handleJson(res, [...new Set(ssids)].map(s => ({ ssid: s, signal: 'Server' })));
                     } else {
-                        // Fallback to nmcli
-                        exec(dbus + "nmcli dev wifi rescan", () => {
-                            exec(`${dbus}nmcli -t -f SSID dev wifi | sort -u`, (err2, stdout2) => {
-                                let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
-                                if (ssids2.length > 0) {
-                                    handleJson(res, ssids2.map(s => ({ ssid: s, signal: 'Found' })));
-                                } else {
-                                    handleJson(res, []);
-                                }
-                            });
+                        // NMCLI Deep Fallback
+                        exec(`${dbus}nmcli -t -f SSID dev wifi`, (err2, stdout2) => {
+                            let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
+                            if (ssids2.length > 0) {
+                                sysMetrics.wifiError = '';
+                                handleJson(res, [...new Set(ssids2)].map(s => ({ ssid: s, signal: 'Found' })));
+                            } else {
+                                sysMetrics.wifiError = `Scan complete but results empty. Raw: ${stdout.substring(0, 50)}`;
+                                handleJson(res, []);
+                            }
                         });
                     }
                 });
-            }, 5000); // Increased to 5s for slower server hardware
+            }, 5000);
         });
     }
 }
