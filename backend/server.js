@@ -505,19 +505,24 @@ function handleWifiConnect(req, res) {
         try {
             const { ssid, password } = JSON.parse(body);
             const platform = os.platform();
-            const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
+            const iface = "wlp0s20f3";
+            const wpa = `wpa_cli -p /var/run/wpa_supplicant -i ${iface} `;
+
             if (platform === 'darwin') {
                 exec(`networksetup -setairportnetwork en0 "${ssid}" "${password}"`, (err, stdout) => {
                     handleJson(res, { success: !err, output: stdout });
                 });
             } else {
-                // Use nmcli directly via dbus for connection if node-wifi fails
-                exec(`${dbus}nmcli dev wifi connect "${ssid}" password "${password}"`, (err, stdout) => {
+                // Server-grade joining: 1. Add Network, 2. Set SSID, 3. Set PSK, 4. Select
+                const joinCmd = `${wpa} add_network | tail -n 1 | xargs -I {} sh -c '${wpa} set_network {} ssid \"\\\"${ssid}\\\"\" && ${wpa} set_network {} psk \"\\\"${password}\\\"\" && ${wpa} enable_network {} && ${wpa} select_network {} && ${wpa} save_config'`;
+                
+                exec(joinCmd, (err, stdout, stderr) => {
                     if (!err) {
-                        handleJson(res, { success: true, output: 'Connected' });
+                        handleJson(res, { success: true, output: 'Connection sequence initiated' });
                     } else {
-                        wifi.connect({ ssid, password }, (err2) => {
-                            handleJson(res, { success: !err2, output: err2 ? err2.toString() : 'Connected' });
+                        // Fallback to nmcli
+                        exec(`nmcli dev wifi connect "${ssid}" password "${password}"`, (err2) => {
+                            handleJson(res, { success: !err2, output: err2 ? stderr : 'Connected' });
                         });
                     }
                 });
