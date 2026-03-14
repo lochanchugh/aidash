@@ -5,17 +5,15 @@ services:
     build: .
     container_name: aidash-os
     restart: always
+    user: "0:0" # Force root user for hardware socket access
     ports:
       - "3000:3000"
     volumes:
       - ./config:/app/config
       - ./backend/users.json:/app/backend/users.json
       - ./server.log:/app/server.log
-      # POWER: Access to host filesystem (read/write)
       - /:/host:rw
-      # POWER: Access to host NetworkManager
       - /var/run/dbus:/var/run/dbus
-      # POWER: Access to host wpa_supplicant socket for Netplan/headless servers
       - /run/wpa_supplicant:/run/wpa_supplicant
     privileged: true
     network_mode: "host"
