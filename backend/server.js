@@ -468,30 +468,36 @@ function handleFileUpload(req, res) {
 function handleWifiScan(res) {
     const platform = os.platform();
     const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
+    
     if (platform === 'darwin') {
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
-            const networks = [];
+            let networks = [];
             if (!err && stdout) {
                 stdout.split('\n').slice(1).forEach(line => {
                     const ssid = line.trim().split(/\s{2,}/)[0];
                     if (ssid && ssid !== 'SSID' && !ssid.startsWith('--')) networks.push({ ssid, signal: 'N/A' });
                 });
             }
-            const unique = Array.from(new Set(networks.map(n => n.ssid))).map(ssid => ({ ssid, signal: 'N/A' }));
-            handleJson(res, unique);
+            handleJson(res, Array.from(new Set(networks.map(n => n.ssid))).map(s => ({ ssid: s, signal: 'N/A' })));
         });
     } else {
-        // Linux: direct nmcli command for SSID list with dbus permissions
-        exec(dbus + "nmcli -t -f SSID dev wifi | sort -u", (err, stdout) => {
-            if (!err && stdout) {
-                const networks = stdout.split('\n')
-                    .map(s => s.trim())
-                    .filter(s => s && s !== 'SSID')
-                    .map(s => ({ ssid: s, signal: 'N/A' }));
-                handleJson(res, networks);
+        // Linux Extreme Scan: Try nmcli, then iwlist, then iw
+        const cmd = `${dbus}nmcli -t -f SSID dev wifi | sort -u || iwlist scan 2>/dev/null | grep ESSID | cut -d: -f2 | sed 's/"//g' | sort -u || iw dev wlan0 scan | grep SSID | cut -d: -f2 | sort -u`;
+        
+        exec(cmd, (err, stdout, stderr) => {
+            let ssids = (stdout || '').split('\n')
+                .map(s => s.trim())
+                .filter(s => s && s !== 'SSID' && s !== '--');
+
+            if (ssids.length > 0) {
+                handleJson(res, ssids.map(s => ({ ssid: s, signal: 'Found' })));
             } else {
+                // Final fallback to node-wifi
                 wifi.scan((err2, nets) => {
-                    if (err2) return handleJson(res, []);
+                    if (err2 || !nets || nets.length === 0) {
+                        sysMetrics.wifiError = `Scan failed. nmcli/iwlist/iw all empty. node-wifi error: ${err2 || 'No networks'}`;
+                        return handleJson(res, []);
+                    }
                     handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
                 });
             }

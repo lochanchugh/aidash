@@ -425,8 +425,14 @@
         function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
 
         async function scanWifi() {
+            const select = document.getElementById('wifi-list');
+            select.innerHTML = '<option value="">Scanning for networks...</option>';
             const list = await API.get('/api/wifi/scan');
-            document.getElementById('wifi-list').innerHTML = list.map(n => `<option value="${n.ssid}">${n.ssid}</option>`).join('');
+            if (!list || list.length === 0) {
+                select.innerHTML = '<option value="">No networks found. Check Debug.</option>';
+            } else {
+                select.innerHTML = '<option value="">Select SSID...</option>' + list.map(n => `<option value="${n.ssid}">${n.ssid} (${n.signal})</option>`).join('');
+            }
         }
 
         async function connectWifi() {
