@@ -35,6 +35,9 @@ let sysMetrics = {
     date: ''
 };
 
+// Historical data for graphs
+let history = { cpu: [], mem: [], labels: [] };
+
 async function updateMetrics() {
     sysMetrics.date = new Date().toLocaleString();
     const platform = os.platform();
@@ -49,6 +52,18 @@ async function updateMetrics() {
         ]);
 
         sysMetrics.cpuCores = cpu.cpus.map(c => c.load.toFixed(1));
+        const currentLoad = cpu.currentLoad || 0;
+        const memUsed = ((mem.active || 0) / (mem.total || 1)) * 100;
+
+        // Update history (max 20 points)
+        history.labels.push(new Date().toLocaleTimeString());
+        history.cpu.push(currentLoad.toFixed(1));
+        history.mem.push(memUsed.toFixed(1));
+        if (history.labels.length > 20) {
+            history.labels.shift();
+            history.cpu.shift();
+            history.mem.shift();
+        }
         
         if (temp.main > 0) sysMetrics.temp = `${temp.main.toFixed(1)}°C`;
         else if (temp.max > 0) sysMetrics.temp = `${temp.max.toFixed(1)}°C`;
@@ -68,20 +83,14 @@ async function updateMetrics() {
                 else sysMetrics.wifi = 'None';
             });
         } else if (platform === 'linux') {
-            // Linux WiFi logic: check nmcli, then iwgetid, then node-wifi
-            exec("nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err, stdout) => {
-                if (!err && stdout.trim()) {
-                    sysMetrics.wifi = stdout.trim();
+            // Aggressive WiFi check: try node-wifi first as it's the dedicated lib, then fallback
+            wifi.getCurrentConnections((err, conn) => {
+                if (!err && conn && conn.length > 0) {
+                    sysMetrics.wifi = conn[0].ssid || 'None';
                 } else {
-                    exec("iwgetid -r", (err2, stdout2) => {
-                        if (!err2 && stdout2.trim()) {
-                            sysMetrics.wifi = stdout2.trim();
-                        } else {
-                            wifi.getCurrentConnections((err3, conn) => {
-                                if (!err3 && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
-                                else sysMetrics.wifi = 'None';
-                            });
-                        }
+                    exec("iwgetid -r || nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err2, stdout) => {
+                        if (!err2 && stdout.trim()) sysMetrics.wifi = stdout.trim();
+                        else sysMetrics.wifi = 'None';
                     });
                 }
             });
@@ -127,6 +136,10 @@ const server = http.createServer((req, res) => {
         serveFile(res, path.join(__dirname, '../frontend/index.html'), 'text/html');
     } else if (url === '/api/login' && method === 'POST') {
         handleLogin(req, res);
+    } else if (url === '/api/user/password' && method === 'POST') {
+        handlePasswordChange(req, res);
+    } else if (url === '/api/history' && method === 'GET') {
+        handleJson(res, history);
     } else if (url === '/api/stats' && method === 'GET') {
         handleStats(res);
     } else if (url === '/api/services' && method === 'GET') {
@@ -204,6 +217,27 @@ function handleLogin(req, res) {
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
         }
+    });
+}
+
+function handlePasswordChange(req, res) {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { username, oldPassword, newPassword } = JSON.parse(body);
+            const users = JSON.parse(fs.readFileSync(USERS_PATH, 'utf8'));
+            const userIdx = users.findIndex(u => u.username === username);
+            const hashedOld = crypto.createHash('sha256').update(oldPassword || '').digest('hex');
+            
+            if (userIdx !== -1 && users[userIdx].password === hashedOld) {
+                users[userIdx].password = crypto.createHash('sha256').update(newPassword || '').digest('hex');
+                fs.writeFileSync(USERS_PATH, JSON.stringify(users, null, 2));
+                handleJson(res, { success: true });
+            } else {
+                res.writeHead(401); res.end(JSON.stringify({ success: false, message: 'Invalid current password' }));
+            }
+        } catch (e) { res.writeHead(400); res.end(JSON.stringify({ success: false, message: 'Request Error' })); }
     });
 }
 
