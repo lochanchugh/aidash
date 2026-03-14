@@ -163,6 +163,7 @@
                 <h3>Interactive File Explorer</h3>
                 <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
                     <button class="secondary" onclick="browseFiles('..')">BACK</button>
+                    <button class="secondary" style="background: var(--accent); color: white;" onclick="browseFiles('/host', true)">HOST ROOT</button>
                     <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto;">/root</div>
                     <input type="text" id="file-search" placeholder="Search files..." onkeyup="if(event.key==='Enter') searchFiles()" style="width: 200px;">
                     <button id="save-btn" class="hidden" onclick="saveFile()" style="background: var(--success);">SAVE CHANGES</button>
@@ -336,10 +337,15 @@
             mainChart.update('none');
         }
 
-        async function browseFiles(path = '.') {
-            if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '.'; }
+        async function browseFiles(path = '.', isAbsolute = false) {
+            if (isAbsolute) { currentDir = path; }
+            else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '.'; }
             else if (path !== '.') { currentDir = (currentDir === '.' ? '' : currentDir + '/') + path; }
-            document.getElementById('breadcrumbs').textContent = currentDir;
+            
+            // Fix double slashes and root display
+            currentDir = currentDir.replace(/\/+/g, '/');
+            document.getElementById('breadcrumbs').textContent = currentDir.startsWith('/host') ? currentDir : '/root/' + currentDir;
+            
             const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
             document.getElementById('file-list').innerHTML = items.map(i => `
                 <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}">

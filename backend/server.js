@@ -83,12 +83,13 @@ async function updateMetrics() {
                 else sysMetrics.wifi = 'None';
             });
         } else if (platform === 'linux') {
-            // Aggressive WiFi check: try node-wifi first as it's the dedicated lib, then fallback
+            const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
             wifi.getCurrentConnections((err, conn) => {
                 if (!err && conn && conn.length > 0) {
                     sysMetrics.wifi = conn[0].ssid || 'None';
                 } else {
-                    exec("iwgetid -r || nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err2, stdout) => {
+                    exec(dbus + "iwgetid -r || " + dbus + "nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err2, stdout, stderr) => {
+                        if (err2) fs.appendFileSync(LOG_PATH, `[WiFi Error] ${stderr}\n`);
                         if (!err2 && stdout.trim()) sysMetrics.wifi = stdout.trim();
                         else sysMetrics.wifi = 'None';
                     });
