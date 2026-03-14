@@ -494,10 +494,12 @@ function handleWifiScan(res) {
         const iface = "wlp0s20f3";
         const wpa = "wpa_cli -p /run/wpa_supplicant -i " + iface;
         
-        // Trigger scan and wait 2 seconds before requesting results
-        exec(`${wpa} scan`, () => {
+        // Trigger scan and wait 5 seconds before requesting results
+        exec(`${wpa} scan`, (scanErr, scanStdout, scanStderr) => {
+            if (scanErr) fs.appendFileSync(LOG_PATH, `[Scan Trigger Error] ${scanStderr || scanErr.message}\n`);
             setTimeout(() => {
-                exec(`${wpa} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout) => {
+                exec(`${wpa} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout, stderr) => {
+                    if (err) fs.appendFileSync(LOG_PATH, `[Scan Results Error] ${stderr || err.message}\n`);
                     let ssids = (stdout || '').split('\n')
                         .map(s => s.trim())
                         .filter(s => s && s.length > 0);
@@ -518,7 +520,7 @@ function handleWifiScan(res) {
                         });
                     }
                 });
-            }, 2000); // 2 second delay for hardware to gather results
+            }, 5000); // Increased to 5s for slower server hardware
         });
     }
 }

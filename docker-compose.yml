@@ -5,7 +5,7 @@ services:
     build: .
     container_name: aidash-os
     restart: always
-    user: "0:0" # Force root user for hardware socket access
+    user: "0:0"
     ports:
       - "3000:3000"
     volumes:
@@ -17,3 +17,7 @@ services:
       - /run/wpa_supplicant:/run/wpa_supplicant
     privileged: true
     network_mode: "host"
+    # New: Disable AppArmor/SELinux blocks for unix sockets
+    security_opt:
+      - apparmor:unconfined
+    ipc: host
