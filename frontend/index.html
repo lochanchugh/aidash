@@ -163,8 +163,7 @@
                 <h3>Interactive File Explorer</h3>
                 <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
                     <button class="secondary" onclick="browseFiles('..')">BACK</button>
-                    <button class="secondary" style="background: var(--accent); color: white;" onclick="browseFiles('/host', true)">HOST ROOT</button>
-                    <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto;">/root</div>
+                    <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto;">/host</div>
                     <input type="text" id="file-search" placeholder="Search files..." onkeyup="if(event.key==='Enter') searchFiles()" style="width: 200px;">
                     <button id="save-btn" class="hidden" onclick="saveFile()" style="background: var(--success);">SAVE CHANGES</button>
                 </div>
@@ -210,12 +209,15 @@
     <div id="sec-modal" class="modal hidden">
         <div class="glass-card" style="width: 450px; padding: 32px;">
             <h2 style="margin-bottom: 24px;">Security & WiFi</h2>
-            <h3 style="margin-bottom: 12px;">WiFi Config</h3>
-            <select id="wifi-list" style="width: 100%; margin-bottom: 10px;"></select>
-            <div style="display: flex; gap: 10px; margin-bottom: 24px;">
-                <input type="password" id="wifi-pass" placeholder="Password" style="flex-grow: 1;">
-                <button onclick="connectWifi()">JOIN</button>
+            <div style="margin-bottom: 24px;">
+                <select id="wifi-list" style="width: 100%; margin-bottom: 10px;"></select>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="password" id="wifi-pass" placeholder="Password" style="flex-grow: 1;">
+                    <button onclick="connectWifi()">JOIN</button>
+                </div>
+                <div id="wifi-debug" style="font-size:10px; opacity:0.6; background:rgba(0,0,0,0.5); padding:8px; border-radius:6px; font-family:monospace; border:1px solid var(--danger);">WiFi Debug: <span id="wifi-err-msg">No issues reported</span></div>
             </div>
+
             <h3 style="margin-bottom: 12px;">Admin Password</h3>
             <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
             <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
@@ -283,7 +285,7 @@
             document.getElementById('sys-bar').style.display = 'flex';
             initChart();
             refreshAll();
-            browseFiles();
+            browseFiles('/host', true);
             setInterval(refreshAll, 5000);
             setInterval(refreshLogs, 10000);
         }
@@ -299,6 +301,11 @@
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             document.getElementById('bar-battery').textContent = `🔋 ${stats.metrics.battery}`;
             document.getElementById('bar-user').textContent = `👤 ${localStorage.getItem('aidash_user')}`;
+            
+            // Debug WiFi Info
+            document.getElementById('wifi-err-msg').textContent = stats.metrics.wifiError || 'All systems operational';
+            document.getElementById('wifi-debug').style.borderColor = stats.metrics.wifiError ? 'var(--danger)' : 'var(--success)';
+            document.getElementById('wifi-err-msg').style.color = stats.metrics.wifiError ? 'var(--danger)' : 'var(--success)';
 
             document.getElementById('cpu-val').textContent = stats.load[0].toFixed(1);
             document.getElementById('cpu-bar').style.width = Math.min(100, stats.load[0] * 10) + '%';
@@ -337,14 +344,15 @@
             mainChart.update('none');
         }
 
-        async function browseFiles(path = '.', isAbsolute = false) {
+        async function browseFiles(path = '/host', isAbsolute = false) {
             if (isAbsolute) { currentDir = path; }
-            else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '.'; }
-            else if (path !== '.') { currentDir = (currentDir === '.' ? '' : currentDir + '/') + path; }
+            else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
+            else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
             
             // Fix double slashes and root display
             currentDir = currentDir.replace(/\/+/g, '/');
-            document.getElementById('breadcrumbs').textContent = currentDir.startsWith('/host') ? currentDir : '/root/' + currentDir;
+            if (!currentDir.startsWith('/host')) currentDir = '/host';
+            document.getElementById('breadcrumbs').textContent = currentDir;
             
             const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
             document.getElementById('file-list').innerHTML = items.map(i => `

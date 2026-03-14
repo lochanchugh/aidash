@@ -32,6 +32,7 @@ let sysMetrics = {
     cpuCores: [],
     battery: 'N/A',
     wifi: 'None',
+    wifiError: '',
     date: ''
 };
 
@@ -87,11 +88,21 @@ async function updateMetrics() {
             wifi.getCurrentConnections((err, conn) => {
                 if (!err && conn && conn.length > 0) {
                     sysMetrics.wifi = conn[0].ssid || 'None';
+                    sysMetrics.wifiError = '';
                 } else {
+                    let errMsg = err ? `node-wifi: ${err.message || err}` : '';
                     exec(dbus + "iwgetid -r || " + dbus + "nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err2, stdout, stderr) => {
-                        if (err2) fs.appendFileSync(LOG_PATH, `[WiFi Error] ${stderr}\n`);
-                        if (!err2 && stdout.trim()) sysMetrics.wifi = stdout.trim();
-                        else sysMetrics.wifi = 'None';
+                        if (err2) {
+                            sysMetrics.wifiError = `${errMsg} | shell: ${stderr || err2.message}`;
+                            fs.appendFileSync(LOG_PATH, `[WiFi Error] ${stderr}\n`);
+                        }
+                        if (!err2 && stdout.trim()) {
+                            sysMetrics.wifi = stdout.trim();
+                            sysMetrics.wifiError = '';
+                        } else {
+                            sysMetrics.wifi = 'None';
+                            if (!err2) sysMetrics.wifiError = "No active connection found via nmcli/iwgetid";
+                        }
                     });
                 }
             });
