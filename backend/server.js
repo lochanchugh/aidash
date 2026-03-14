@@ -85,20 +85,29 @@ async function updateMetrics() {
             });
         } else if (platform === 'linux') {
             const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
-            // Try wpa_cli first as it's common on server OS, then fall back to nmcli/node-wifi
-            exec("wpa_cli status | grep '^ssid=' | cut -d= -f2", (err, stdout) => {
+            const iface = "wlp0s20f3";
+            // Try wpa_cli with specific interface first
+            exec(`wpa_cli -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err, stdout) => {
                 if (!err && stdout.trim()) {
                     sysMetrics.wifi = stdout.trim();
                     sysMetrics.wifiError = '';
                 } else {
-                    wifi.getCurrentConnections((err2, conn) => {
-                        if (!err2 && conn && conn.length > 0) {
-                            sysMetrics.wifi = conn[0].ssid || 'None';
+                    // Fallback to generic status or node-wifi
+                    exec("wpa_cli status | grep '^ssid=' | cut -d= -f2", (err2, stdout2) => {
+                        if (!err2 && stdout2.trim()) {
+                            sysMetrics.wifi = stdout2.trim();
                             sysMetrics.wifiError = '';
                         } else {
-                            exec(dbus + "iwgetid -r || " + dbus + "nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err3, stdout3) => {
-                                if (!err3 && stdout3.trim()) sysMetrics.wifi = stdout3.trim();
-                                else sysMetrics.wifi = 'None';
+                            wifi.getCurrentConnections((err3, conn) => {
+                                if (!err3 && conn && conn.length > 0) {
+                                    sysMetrics.wifi = conn[0].ssid || 'None';
+                                    sysMetrics.wifiError = '';
+                                } else {
+                                    exec(dbus + "iwgetid -r || " + dbus + "nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err4, stdout4) => {
+                                        if (!err4 && stdout4.trim()) sysMetrics.wifi = stdout4.trim();
+                                        else sysMetrics.wifi = 'None';
+                                    });
+                                }
                             });
                         }
                     });
@@ -481,7 +490,8 @@ function handleWifiScan(res) {
     } else {
         // Linux Extreme Scan: Try wpa_cli (server default), then nmcli, then iwlist
         const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
-        exec("wpa_cli scan && wpa_cli scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u", (err, stdout) => {
+        const iface = "wlp0s20f3";
+        exec(`wpa_cli -i ${iface} scan && wpa_cli -i ${iface} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout) => {
             let ssids = (stdout || '').split('\n')
                 .map(s => s.trim())
                 .filter(s => s && s.length > 0);
@@ -489,25 +499,30 @@ function handleWifiScan(res) {
             if (ssids.length > 0) {
                 handleJson(res, ssids.map(s => ({ ssid: s, signal: 'Server' })));
             } else {
-                exec(dbus + "nmcli dev wifi rescan", () => {
-                    const cmd = `${dbus}nmcli -t -f SSID dev wifi | sort -u || iwlist scan 2>/dev/null | grep ESSID | cut -d: -f2 | sed 's/"//g' | sort -u`;
-                    exec(cmd, (err2, stdout2) => {
-                        let ssids2 = (stdout2 || '').split('\n')
-                            .map(s => s.trim())
-                            .filter(s => s && s !== 'SSID' && s !== '--' && s.length > 0);
-
-                        if (ssids2.length > 0) {
-                            handleJson(res, ssids2.map(s => ({ ssid: s, signal: 'Found' })));
-                        } else {
-                            wifi.scan((err3, nets) => {
-                                if (err3 || !nets || nets.length === 0) {
-                                    sysMetrics.wifiError = `Scan empty. wpa_cli/nmcli failed. node-wifi: ${err3 || 'No results'}`;
-                                    return handleJson(res, []);
+                // Fallback to generic wpa_cli scan
+                exec("wpa_cli scan && wpa_cli scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u", (err2, stdout2) => {
+                    let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
+                    if (ssids2.length > 0) {
+                        handleJson(res, ssids2.map(s => ({ ssid: s, signal: 'Server' })));
+                    } else {
+                        exec(dbus + "nmcli dev wifi rescan", () => {
+                            const cmd = `${dbus}nmcli -t -f SSID dev wifi | sort -u || iwlist scan 2>/dev/null | grep ESSID | cut -d: -f2 | sed 's/"//g' | sort -u`;
+                            exec(cmd, (err3, stdout3) => {
+                                let ssids3 = (stdout3 || '').split('\n').map(s => s.trim()).filter(s => s && s !== 'SSID' && s !== '--' && s.length > 0);
+                                if (ssids3.length > 0) {
+                                    handleJson(res, ssids3.map(s => ({ ssid: s, signal: 'Found' })));
+                                } else {
+                                    wifi.scan((err4, nets) => {
+                                        if (err4 || !nets || nets.length === 0) {
+                                            sysMetrics.wifiError = `Scan empty. wpa_cli/nmcli failed. node-wifi: ${err4 || 'No results'}`;
+                                            return handleJson(res, []);
+                                        }
+                                        handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
+                                    });
                                 }
-                                handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
                             });
-                        }
-                    });
+                        });
+                    }
                 });
             }
         });
