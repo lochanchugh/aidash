@@ -467,6 +467,7 @@ function handleFileUpload(req, res) {
 
 function handleWifiScan(res) {
     const platform = os.platform();
+    const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
     if (platform === 'darwin') {
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
             const networks = [];
@@ -480,8 +481,8 @@ function handleWifiScan(res) {
             handleJson(res, unique);
         });
     } else {
-        // Linux: direct nmcli command for SSID list
-        exec("nmcli -t -f SSID dev wifi | sort -u", (err, stdout) => {
+        // Linux: direct nmcli command for SSID list with dbus permissions
+        exec(dbus + "nmcli -t -f SSID dev wifi | sort -u", (err, stdout) => {
             if (!err && stdout) {
                 const networks = stdout.split('\n')
                     .map(s => s.trim())
@@ -504,13 +505,21 @@ function handleWifiConnect(req, res) {
         try {
             const { ssid, password } = JSON.parse(body);
             const platform = os.platform();
+            const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
             if (platform === 'darwin') {
                 exec(`networksetup -setairportnetwork en0 "${ssid}" "${password}"`, (err, stdout) => {
                     handleJson(res, { success: !err, output: stdout });
                 });
             } else {
-                wifi.connect({ ssid, password }, (err) => {
-                    handleJson(res, { success: !err, output: err ? err.toString() : 'Connected' });
+                // Use nmcli directly via dbus for connection if node-wifi fails
+                exec(`${dbus}nmcli dev wifi connect "${ssid}" password "${password}"`, (err, stdout) => {
+                    if (!err) {
+                        handleJson(res, { success: true, output: 'Connected' });
+                    } else {
+                        wifi.connect({ ssid, password }, (err2) => {
+                            handleJson(res, { success: !err2, output: err2 ? err2.toString() : 'Connected' });
+                        });
+                    }
                 });
             }
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
