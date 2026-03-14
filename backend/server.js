@@ -68,13 +68,20 @@ async function updateMetrics() {
                 else sysMetrics.wifi = 'None';
             });
         } else if (platform === 'linux') {
-            // Linux WiFi Fallback: try iwgetid first, then nmcli
-            exec("iwgetid -r || nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err, stdout) => {
-                if (!err && stdout.trim()) sysMetrics.wifi = stdout.trim();
-                else {
-                    wifi.getCurrentConnections((err2, conn) => {
-                        if (!err2 && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
-                        else sysMetrics.wifi = 'None';
+            // Linux WiFi logic: check nmcli, then iwgetid, then node-wifi
+            exec("nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err, stdout) => {
+                if (!err && stdout.trim()) {
+                    sysMetrics.wifi = stdout.trim();
+                } else {
+                    exec("iwgetid -r", (err2, stdout2) => {
+                        if (!err2 && stdout2.trim()) {
+                            sysMetrics.wifi = stdout2.trim();
+                        } else {
+                            wifi.getCurrentConnections((err3, conn) => {
+                                if (!err3 && conn && conn.length > 0) sysMetrics.wifi = conn[0].ssid || 'None';
+                                else sysMetrics.wifi = 'None';
+                            });
+                        }
                     });
                 }
             });
@@ -463,4 +470,17 @@ function handleWifiConnect(req, res) {
     });
 }
 
-server.listen(PORT, () => { console.log(`AiDash running on port ${PORT}`); });
+function startServer(port) {
+    server.listen(port, () => {
+        console.log(`AiDash running on port ${port}`);
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${port} is busy, trying ${port + 1}...`);
+            startServer(port + 1);
+        } else {
+            console.error(err);
+        }
+    });
+}
+
+startServer(PORT);
