@@ -123,7 +123,8 @@ evaluateAlerts();
 
 function safePath(p) {
     const resolved = path.resolve(ROOT_DIR, p || '.');
-    if (!resolved.startsWith(ROOT_DIR)) throw new Error('Access Denied');
+    // Allow access to /host explicitly for host filesystem power
+    if (!resolved.startsWith(ROOT_DIR) && !resolved.startsWith('/host')) throw new Error('Access Denied');
     return resolved;
 }
 

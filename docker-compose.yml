@@ -11,6 +11,9 @@ services:
       - ./config:/app/config
       - ./backend/users.json:/app/backend/users.json
       - ./server.log:/app/server.log
-    # Privileged or specific caps might be needed for some hardware metrics in Docker
+      # POWER: Access to host filesystem (read/write)
+      - /:/host:rw
+      # POWER: Access to host NetworkManager (for WiFi)
+      - /var/run/dbus:/var/run/dbus
     privileged: true
-    network_mode: "host" # Recommended for real network/wifi monitoring on Linux
+    network_mode: "host"

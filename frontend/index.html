@@ -391,7 +391,7 @@
         }
 
         window.onkeydown = e => { 
-            if (e.ctrlKey && e.key === 'k') { 
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
                 e.preventDefault(); 
                 togglePalette(); 
             } 
