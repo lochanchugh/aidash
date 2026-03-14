@@ -86,8 +86,9 @@ async function updateMetrics() {
         } else if (platform === 'linux') {
             const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
             const iface = "wlp0s20f3";
-            // Try wpa_cli with specific interface first
-            exec(`wpa_cli -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err, stdout) => {
+            const wpa = "wpa_cli -p /run/wpa_supplicant -i " + iface;
+            // Try wpa_cli with specific socket and interface
+            exec(`${wpa} status | grep '^ssid=' | cut -d= -f2`, (err, stdout) => {
                 if (!err && stdout.trim()) {
                     sysMetrics.wifi = stdout.trim();
                     sysMetrics.wifiError = '';
@@ -488,10 +489,11 @@ function handleWifiScan(res) {
             handleJson(res, Array.from(new Set(networks.map(n => n.ssid))).map(s => ({ ssid: s, signal: 'N/A' })));
         });
     } else {
-        // Linux Extreme Scan: Try wpa_cli (server default), then nmcli, then iwlist
+        // Linux Extreme Scan: Try wpa_cli with socket path, then nmcli, then iwlist
         const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
         const iface = "wlp0s20f3";
-        exec(`wpa_cli -i ${iface} scan && wpa_cli -i ${iface} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout) => {
+        const wpa = "wpa_cli -p /run/wpa_supplicant -i " + iface;
+        exec(`${wpa} scan && ${wpa} scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u`, (err, stdout) => {
             let ssids = (stdout || '').split('\n')
                 .map(s => s.trim())
                 .filter(s => s && s.length > 0);
@@ -499,30 +501,23 @@ function handleWifiScan(res) {
             if (ssids.length > 0) {
                 handleJson(res, ssids.map(s => ({ ssid: s, signal: 'Server' })));
             } else {
-                // Fallback to generic wpa_cli scan
-                exec("wpa_cli scan && wpa_cli scan_results | awk -F'\t' '{print $5}' | tail -n +2 | sort -u", (err2, stdout2) => {
-                    let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
-                    if (ssids2.length > 0) {
-                        handleJson(res, ssids2.map(s => ({ ssid: s, signal: 'Server' })));
-                    } else {
-                        exec(dbus + "nmcli dev wifi rescan", () => {
-                            const cmd = `${dbus}nmcli -t -f SSID dev wifi | sort -u || iwlist scan 2>/dev/null | grep ESSID | cut -d: -f2 | sed 's/"//g' | sort -u`;
-                            exec(cmd, (err3, stdout3) => {
-                                let ssids3 = (stdout3 || '').split('\n').map(s => s.trim()).filter(s => s && s !== 'SSID' && s !== '--' && s.length > 0);
-                                if (ssids3.length > 0) {
-                                    handleJson(res, ssids3.map(s => ({ ssid: s, signal: 'Found' })));
-                                } else {
-                                    wifi.scan((err4, nets) => {
-                                        if (err4 || !nets || nets.length === 0) {
-                                            sysMetrics.wifiError = `Scan empty. wpa_cli/nmcli failed. node-wifi: ${err4 || 'No results'}`;
-                                            return handleJson(res, []);
-                                        }
-                                        handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
-                                    });
+                // Fallback scan
+                exec(dbus + "nmcli dev wifi rescan", () => {
+                    const cmd = `${dbus}nmcli -t -f SSID dev wifi | sort -u || iwlist scan 2>/dev/null | grep ESSID | cut -d: -f2 | sed 's/"//g' | sort -u`;
+                    exec(cmd, (err2, stdout2) => {
+                        let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s !== 'SSID' && s !== '--' && s.length > 0);
+                        if (ssids2.length > 0) {
+                            handleJson(res, ssids2.map(s => ({ ssid: s, signal: 'Found' })));
+                        } else {
+                            wifi.scan((err3, nets) => {
+                                if (err3 || !nets || nets.length === 0) {
+                                    sysMetrics.wifiError = `Scan empty. wpa_cli/nmcli failed. node-wifi: ${err3 || 'No results'}`;
+                                    return handleJson(res, []);
                                 }
+                                handleJson(res, nets.map(n => ({ ssid: n.ssid, signal: n.signalLevel })));
                             });
-                        });
-                    }
+                        }
+                    });
                 });
             }
         });
