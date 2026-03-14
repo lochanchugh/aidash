@@ -13,7 +13,9 @@ services:
       - ./server.log:/app/server.log
       # POWER: Access to host filesystem (read/write)
       - /:/host:rw
-      # POWER: Access to host NetworkManager (for WiFi)
+      # POWER: Access to host NetworkManager
       - /var/run/dbus:/var/run/dbus
+      # POWER: Access to host wpa_supplicant (for headless servers)
+      - /var/run/wpa_supplicant:/var/run/wpa_supplicant
     privileged: true
     network_mode: "host"

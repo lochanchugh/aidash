@@ -1,11 +1,12 @@
 # Use Node.js LTS (Slim for minimal size)
 FROM node:20-slim
 
-# Install system dependencies for metrics (systeminformation) and wifi (node-wifi)
+# Install system dependencies for metrics, wifi, and headless server control
 RUN apt-get update && apt-get install -y \
     lm-sensors \
     wireless-tools \
     network-manager \
+    wpasupplicant \
     iproute2 \
     procps \
     && npm install -g @google/gemini-cli \
