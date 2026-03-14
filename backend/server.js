@@ -84,33 +84,17 @@ async function updateMetrics() {
                 else sysMetrics.wifi = 'None';
             });
         } else if (platform === 'linux') {
-            const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
             const iface = "wlp0s20f3";
-            const wpa = "wpa_cli -p /var/run/wpa_supplicant -i " + iface;
-            // Try wpa_cli with specific socket and interface
-            exec(`${wpa} status | grep '^ssid=' | cut -d= -f2`, (err, stdout) => {
+            // Use 'iw' to get the current SSID - proven to work in your docker environment
+            exec(`iw dev ${iface} link | grep SSID | cut -d: -f2`, (err, stdout) => {
                 if (!err && stdout.trim()) {
                     sysMetrics.wifi = stdout.trim();
                     sysMetrics.wifiError = '';
                 } else {
-                    // Fallback to generic status or node-wifi
-                    exec("wpa_cli status | grep '^ssid=' | cut -d= -f2", (err2, stdout2) => {
-                        if (!err2 && stdout2.trim()) {
-                            sysMetrics.wifi = stdout2.trim();
-                            sysMetrics.wifiError = '';
-                        } else {
-                            wifi.getCurrentConnections((err3, conn) => {
-                                if (!err3 && conn && conn.length > 0) {
-                                    sysMetrics.wifi = conn[0].ssid || 'None';
-                                    sysMetrics.wifiError = '';
-                                } else {
-                                    exec(dbus + "iwgetid -r || " + dbus + "nmcli -t -f active,ssid dev wifi | grep '^yes' | cut -d: -f2", (err4, stdout4) => {
-                                        if (!err4 && stdout4.trim()) sysMetrics.wifi = stdout4.trim();
-                                        else sysMetrics.wifi = 'None';
-                                    });
-                                }
-                            });
-                        }
+                    // Fallback to wpa_cli if iw fails for status
+                    exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err2, stdout2) => {
+                        if (!err2 && stdout2.trim()) sysMetrics.wifi = stdout2.trim();
+                        else sysMetrics.wifi = 'None';
                     });
                 }
             });
@@ -475,7 +459,7 @@ function handleFileUpload(req, res) {
 
 function handleWifiScan(res) {
     const platform = os.platform();
-    const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
+    const iface = "wlp0s20f3";
     
     if (platform === 'darwin') {
         exec("/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s", (err, stdout) => {
@@ -489,48 +473,28 @@ function handleWifiScan(res) {
             handleJson(res, Array.from(new Set(networks.map(n => n.ssid))).map(s => ({ ssid: s, signal: 'N/A' })));
         });
     } else {
-        // Linux Extreme Scan: Try wpa_cli with socket path and wait for results
-        const dbus = "DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket ";
-        const iface = "wlp0s20f3";
-        const wpa = "wpa_cli -p /var/run/wpa_supplicant -i " + iface;
-        
-        // Trigger scan and wait 5 seconds before requesting results
-        exec(`${wpa} scan`, (scanErr, scanStdout, scanStderr) => {
-            if (scanErr || scanStderr) {
-                sysMetrics.wifiError = `Scan Trigger Fail: ${scanStderr || scanErr.message}`;
-            }
-            setTimeout(() => {
-                exec(`${wpa} scan_results`, (err, stdout, stderr) => {
-                    if (err || stderr) {
-                        sysMetrics.wifiError = `Results Fail: ${stderr || err.message}`;
-                    }
-                    
-                    let lines = (stdout || '').split('\n');
-                    let ssids = lines
-                        .map(line => {
-                            const parts = line.split('\t');
-                            return parts.length > 4 ? parts[4].trim() : '';
-                        })
-                        .filter(s => s && s !== 'ssid' && s.length > 0);
+        // Use 'iw' for hardware-level scanning - bypassing wpa_cli timeouts
+        // Proven to work inside your docker container
+        exec(`iw dev ${iface} scan | grep SSID | cut -d: -f2`, (err, stdout, stderr) => {
+            let ssids = (stdout || '').split('\n')
+                .map(s => s.trim())
+                .filter(s => s && s.length > 0 && s !== 'List');
 
-                    if (ssids.length > 0) {
-                        sysMetrics.wifiError = '';
-                        handleJson(res, [...new Set(ssids)].map(s => ({ ssid: s, signal: 'Server' })));
+            if (ssids.length > 0) {
+                sysMetrics.wifiError = '';
+                handleJson(res, [...new Set(ssids)].map(s => ({ ssid: s, signal: 'Hardware' })));
+            } else {
+                // Last ditch attempt with wpa_cli if iw returns nothing
+                exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} scan_results | awk -F'\t' '{print $5}'`, (err2, stdout2) => {
+                    let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
+                    if (ssids2.length > 0) {
+                        handleJson(res, [...new Set(ssids2)].map(s => ({ ssid: s, signal: 'Server' })));
                     } else {
-                        // NMCLI Deep Fallback
-                        exec(`${dbus}nmcli -t -f SSID dev wifi`, (err2, stdout2) => {
-                            let ssids2 = (stdout2 || '').split('\n').map(s => s.trim()).filter(s => s && s.length > 0);
-                            if (ssids2.length > 0) {
-                                sysMetrics.wifiError = '';
-                                handleJson(res, [...new Set(ssids2)].map(s => ({ ssid: s, signal: 'Found' })));
-                            } else {
-                                sysMetrics.wifiError = `Scan complete but results empty. Raw: ${stdout.substring(0, 50)}`;
-                                handleJson(res, []);
-                            }
-                        });
+                        sysMetrics.wifiError = `Hardware scan empty. Error: ${stderr || 'No signal'}`;
+                        handleJson(res, []);
                     }
                 });
-            }, 5000);
+            }
         });
     }
 }
