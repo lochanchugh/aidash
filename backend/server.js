@@ -71,7 +71,14 @@ async function updateMetrics() {
         else sysMetrics.temp = 'N/A';
 
         if (battery.hasBattery) {
-            sysMetrics.battery = `${battery.percent}% ${battery.isCharging ? '(Charging)' : ''}`;
+            sysMetrics.battery = {
+                percent: battery.percent,
+                isCharging: battery.isCharging,
+                voltage: battery.voltage,
+                capacity: battery.capacityUnit === 'mAh' ? `${battery.currentCapacity} / ${battery.maxCapacity} mAh` : 'N/A',
+                health: battery.health || 'N/A',
+                cycleCount: battery.cycleCount || 'N/A'
+            };
         } else sysMetrics.battery = 'N/A';
 
         const uniqueUsers = [...new Set(users.map(u => u.user))];
@@ -165,6 +172,10 @@ const server = http.createServer((req, res) => {
         handleDeploy(req, res);
     } else if (url.startsWith('/api/files/list') && method === 'GET') {
         if (config.modules.files) handleFileList(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/mkdir') && method === 'POST') {
+        if (config.modules.files) handleMakeDir(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
+    } else if (url.startsWith('/api/files/create') && method === 'POST') {
+        if (config.modules.files) handleCreateFile(req, res); else { res.writeHead(403); res.end('Files module disabled.'); }
     } else if (url.startsWith('/api/files/read') && method === 'GET') {
         if (config.modules.files) handleFileRead(parsedUrl, res); else { res.writeHead(403); res.end('Files module disabled.'); }
     } else if (url.startsWith('/api/files/write') && method === 'POST') {
@@ -358,10 +369,37 @@ function handleFileList(parsedUrl, res) {
         handleJson(res, items.map(i => {
             const fullPath = path.join(dir, i.name);
             let size = 0;
-            try { if (i.isFile()) size = fs.statSync(fullPath).size; } catch (e) {}
-            return { name: i.name, isDir: i.isDirectory(), size };
+            let mtime = null;
+            try { 
+                const stats = fs.statSync(fullPath);
+                size = stats.size;
+                mtime = stats.mtime;
+            } catch (e) {}
+            return { name: i.name, isDir: i.isDirectory(), size, mtime };
         }));
     } catch (e) { handleJson(res, { error: e.message }); }
+}
+
+function handleMakeDir(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { path: p } = JSON.parse(body);
+            fs.mkdirSync(safePath(p), { recursive: true });
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(500); res.end(e.message); }
+    });
+}
+
+function handleCreateFile(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { path: p } = JSON.parse(body);
+            fs.writeFileSync(safePath(p), '');
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(500); res.end(e.message); }
+    });
 }
 
 function handleFileRead(parsedUrl, res) {

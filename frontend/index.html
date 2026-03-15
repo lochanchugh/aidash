@@ -111,6 +111,7 @@
                 <p id="system-uptime" style="color: var(--text-dim); font-size: 12px; font-weight: 600;"></p>
             </div>
             <div style="display: flex; gap: 10px;">
+                <button class="secondary" onclick="openTerminal()">$_ TERMINAL</button>
                 <button class="secondary" onclick="togglePalette()">⌘ COMMANDS</button>
                 <button class="secondary" onclick="openSecurityModal()">SECURITY</button>
                 <button class="secondary" style="color: var(--danger)" onclick="logout()">LOGOUT</button>
@@ -118,10 +119,11 @@
         </header>
 
         <div class="stats-strip">
-            <div class="stat-card">
-                <div class="stat-label">CPU LOAD</div>
-                <div id="cpu-val" class="stat-val">0.0</div>
-                <div class="bar-bg"><div id="cpu-bar" class="bar-fill" style="width: 0%"></div></div>
+            <div class="stat-card" id="battery-stat-card" style="cursor: pointer;">
+                <div class="stat-label">BATTERY</div>
+                <div id="bat-val" class="stat-val">N/A</div>
+                <div class="bar-bg"><div id="bat-bar" class="bar-fill" style="width: 0%; background: var(--warning)"></div></div>
+                <div id="bat-details" style="font-size: 9px; margin-top: 8px; opacity: 0.6; display: none;"></div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">MEMORY</div>
@@ -161,16 +163,22 @@
         <div class="grid" style="grid-template-columns: 1fr;">
             <section class="glass-card">
                 <h3>Interactive File Explorer</h3>
-                <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center;">
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
                     <button class="secondary" onclick="browseFiles('..')">BACK</button>
-                    <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto;">/host</div>
+                    <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto; white-space: nowrap;">/host</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="secondary" style="padding: 6px 10px;" onclick="newFolder()">+ FOLDER</button>
+                        <button class="secondary" style="padding: 6px 10px;" onclick="newFile()">+ FILE</button>
+                        <button id="download-btn" class="secondary hidden" style="padding: 6px 10px;" onclick="downloadFile()">↓ DL</button>
+                        <button id="delete-btn" class="secondary hidden" style="padding: 6px 10px; color: var(--danger);" onclick="deleteItem()">DEL</button>
+                    </div>
                     <input type="text" id="file-search" placeholder="Search files..." onkeyup="if(event.key==='Enter') searchFiles()" style="width: 200px;">
                     <button id="save-btn" class="hidden" onclick="saveFile()" style="background: var(--success);">SAVE CHANGES</button>
                 </div>
-                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 1px; background: var(--card-border); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden;">
+                <div style="display: grid; grid-template-columns: 350px 1fr; gap: 1px; background: var(--card-border); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden;">
                     <div id="file-list" class="file-list" style="background: var(--bg); padding: 8px;"></div>
                     <div id="file-editor" style="background: #000;">
-                        <textarea id="editor-area" style="width: 100%; height: 350px; background: transparent; color: #10b981; border: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px; resize: none; outline: none;" readonly placeholder="Select a file to edit..."></textarea>
+                        <textarea id="editor-area" style="width: 100%; height: 400px; background: transparent; color: #10b981; border: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px; resize: none; outline: none;" readonly placeholder="Select a file to edit..."></textarea>
                     </div>
                 </div>
             </section>
@@ -244,6 +252,21 @@
         </div>
     </div>
 
+    <!-- Terminal -->
+    <div id="term-modal" class="modal hidden">
+        <div class="glass-card" style="width: 80%; height: 80%; display: flex; flex-direction: column; padding: 0; border-color: var(--primary);">
+            <div style="padding: 12px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 800; font-size: 12px; color: var(--primary);">SYSTEM TERMINAL</span>
+                <button class="secondary" style="padding: 4px 8px;" onclick="closeTerminal()">×</button>
+            </div>
+            <div id="term-out" style="flex-grow: 1; background: #000; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px; overflow-y: auto; white-space: pre-wrap;"></div>
+            <div style="display: flex; background: #111; padding: 10px;">
+                <span style="color: var(--primary); padding: 10px 0 10px 10px; font-family: monospace; font-weight: 800;">$</span>
+                <input type="text" id="term-input" style="flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px; outline: none;" placeholder="Enter command...">
+            </div>
+        </div>
+    </div>
+
     <!-- Palette -->
     <div id="palette" class="modal hidden" onclick="if(event.target===this) togglePalette()">
         <div class="glass-card" style="width: 600px; padding: 0; align-self: flex-start; margin-top: 100px; border-color: var(--primary);">
@@ -301,6 +324,13 @@
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('main-dashboard').classList.remove('hidden');
             document.getElementById('sys-bar').style.display = 'flex';
+            
+            // Initialize Battery Toggle
+            document.getElementById('battery-stat-card').onclick = () => {
+                const details = document.getElementById('bat-details');
+                details.style.display = details.style.display === 'none' ? 'block' : 'none';
+            };
+
             initChart();
             refreshAll();
             browseFiles('/host', true);
@@ -317,14 +347,28 @@
             document.getElementById('system-uptime').textContent = `UPTIME: ${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
-            document.getElementById('bar-battery').textContent = `🔋 ${stats.metrics.battery}`;
+            
+            // Battery Update
+            const bat = stats.metrics.battery;
+            const batVal = document.getElementById('bat-val');
+            const batBar = document.getElementById('bat-bar');
+            const batDetails = document.getElementById('bat-details');
+            
+            if (bat && bat !== 'N/A') {
+                batVal.textContent = `${bat.percent}%`;
+                batBar.style.width = `${bat.percent}%`;
+                if (bat.isCharging) batVal.textContent += ' ⚡';
+                batDetails.innerHTML = `VOLTAGE: ${bat.voltage || 'N/A'}V<br>HEALTH: ${bat.health}<br>CYCLE: ${bat.cycleCount}<br>CAPACITY: ${bat.capacity}`;
+                document.getElementById('bar-battery').textContent = `🔋 ${bat.percent}%${bat.isCharging ? '⚡' : ''}`;
+            } else {
+                batVal.textContent = 'N/A';
+                batBar.style.width = '0%';
+                batDetails.textContent = 'NO BATTERY DETECTED';
+                document.getElementById('bar-battery').textContent = '🔋 N/A';
+            }
+
             document.getElementById('bar-user').textContent = `👤 ${localStorage.getItem('aidash_user')}`;
             
-            // Debug WiFi Info
-            document.getElementById('wifi-err-msg').textContent = stats.metrics.wifiError || 'All systems operational';
-            document.getElementById('wifi-debug').style.borderColor = stats.metrics.wifiError ? 'var(--danger)' : 'var(--success)';
-            document.getElementById('wifi-err-msg').style.color = stats.metrics.wifiError ? 'var(--danger)' : 'var(--success)';
-
             document.getElementById('cpu-val').textContent = stats.load[0].toFixed(1);
             document.getElementById('cpu-bar').style.width = Math.min(100, stats.load[0] * 10) + '%';
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
@@ -362,28 +406,92 @@
             mainChart.update('none');
         }
 
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
         async function browseFiles(path = '/host', isAbsolute = false) {
             if (isAbsolute) { currentDir = path; }
             else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
             else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
             
-            // Fix double slashes and root display
             currentDir = currentDir.replace(/\/+/g, '/');
             if (!currentDir.startsWith('/host')) currentDir = '/host';
             document.getElementById('breadcrumbs').textContent = currentDir;
             
             const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
             document.getElementById('file-list').innerHTML = items.map(i => `
-                <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}">
-                    <span>${i.isDir ? '📁' : '📄'}</span> ${i.name}
+                <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>${i.isDir ? '📁' : '📄'}</span> 
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${i.name}</span>
+                    </div>
+                    ${!i.isDir ? `<span style="font-size: 10px; color: var(--text-dim); font-family: monospace;">${formatSize(i.size)}</span>` : ''}
                 </div>
             `).join('');
+            
+            // Clear selection buttons
+            document.getElementById('download-btn').classList.add('hidden');
+            document.getElementById('delete-btn').classList.add('hidden');
+            currentFile = null;
         }
 
         async function readFile(name) {
-            const path = (currentDir === '.' ? '' : currentDir + '/') + name;
+            const path = (currentDir === '/' ? '' : currentDir + '/') + name;
             const res = await fetch('/api/files/read?path=' + encodeURIComponent(path));
-            if (res.ok) { document.getElementById('editor-area').value = await res.text(); document.getElementById('editor-area').readOnly = false; currentFile = path; document.getElementById('save-btn').classList.remove('hidden'); }
+            if (res.ok) { 
+                document.getElementById('editor-area').value = await res.text(); 
+                document.getElementById('editor-area').readOnly = false; 
+                currentFile = path; 
+                document.getElementById('save-btn').classList.remove('hidden'); 
+                document.getElementById('download-btn').classList.remove('hidden');
+                document.getElementById('delete-btn').classList.remove('hidden');
+                
+                // Highlight selected item
+                document.querySelectorAll('.file-item').forEach(el => {
+                    if (el.textContent.includes(name)) el.style.background = 'var(--primary-glow)';
+                    else el.style.background = 'transparent';
+                });
+            }
+        }
+
+        async function newFolder() {
+            const name = prompt('Folder Name:');
+            if (name) {
+                const res = await API.post('/api/files/mkdir', { path: currentDir + '/' + name });
+                if (res.success) browseFiles('.');
+                else alert('Error creating folder');
+            }
+        }
+
+        async function newFile() {
+            const name = prompt('File Name:');
+            if (name) {
+                const res = await API.post('/api/files/create', { path: currentDir + '/' + name });
+                if (res.success) browseFiles('.');
+                else alert('Error creating file');
+            }
+        }
+
+        async function deleteItem() {
+            if (!currentFile) return;
+            if (confirm(`Delete ${currentFile.split('/').pop()}?`)) {
+                const res = await API.post('/api/files/delete', { path: currentFile });
+                if (res.success) {
+                    document.getElementById('editor-area').value = '';
+                    document.getElementById('save-btn').classList.add('hidden');
+                    browseFiles('.');
+                }
+            }
+        }
+
+        function downloadFile() {
+            if (!currentFile) return;
+            window.open('/api/files/download?path=' + encodeURIComponent(currentFile));
         }
 
         async function saveFile() {
@@ -409,9 +517,42 @@
 
         async function execCmd(command) {
             const res = await API.post('/api/command', { command });
-            alert("$ " + command + "\n\n" + (res.output || "No output."));
+            if (document.getElementById('term-modal').classList.contains('hidden')) {
+                alert("$ " + command + "\n\n" + (res.output || "No output."));
+            } else {
+                const termOut = document.getElementById('term-out');
+                termOut.textContent += `\n$ ${command}\n${res.output || '(No output)'}\n`;
+                termOut.scrollTop = termOut.scrollHeight;
+            }
             if (!document.getElementById('palette').classList.contains('hidden')) togglePalette();
         }
+
+        function openTerminal() {
+            document.getElementById('term-modal').classList.remove('hidden');
+            document.getElementById('term-input').focus();
+            if (!document.getElementById('term-out').textContent) {
+                document.getElementById('term-out').textContent = "AiDash System Terminal v2.0\nType 'help' for available commands.\n";
+            }
+        }
+
+        function closeTerminal() {
+            document.getElementById('term-modal').classList.add('hidden');
+        }
+
+        document.getElementById('term-input').onkeydown = async function(e) {
+            if (e.key === 'Enter') {
+                const cmd = this.value.trim();
+                if (!cmd) return;
+                this.value = '';
+                if (cmd === 'clear') {
+                    document.getElementById('term-out').textContent = '';
+                } else if (cmd === 'exit') {
+                    closeTerminal();
+                } else {
+                    await execCmd(cmd);
+                }
+            }
+        };
 
         function togglePalette() { 
             document.getElementById('palette').classList.toggle('hidden'); 
@@ -427,8 +568,13 @@
                 e.preventDefault(); 
                 togglePalette(); 
             } 
-            if (e.key === 'Escape' && !document.getElementById('palette').classList.contains('hidden')) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+                e.preventDefault();
+                openTerminal();
+            }
+            if (e.key === 'Escape') {
                 togglePalette();
+                closeTerminal();
             }
         };
 

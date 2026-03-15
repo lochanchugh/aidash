@@ -5,8 +5,14 @@ AiDash V2 is a high-performance system monitoring hub designed for servers with 
 
 ## 🚀 Key Features
 - **Real-time Performance Metrics**: Rolling 20-point history charts for CPU and Memory.
+- **System Terminal (Ctrl+T / Cmd+T)**: Full interactive shell terminal for real-time command execution and diagnostic output.
 - **Headless WiFi Module**: Hardware-level scanning via `iw` and robust joining via `wpa_cli` (designed for server environments).
-- **Interactive File Explorer**: Full access to the host filesystem (`/host`) with built-in text editor and save capabilities.
+- **Enhanced File Explorer**: 
+  - Full access to the host filesystem (`/host`) with built-in text editor.
+  - Create new files and folders directly from the UI.
+  - Real-time file size display and one-click file downloads.
+  - Safe file deletion and save capabilities.
+- **Advanced Battery Hub**: One-click toggle for deep battery analytics (Voltage, Cycle count, Health, and Capacity).
 - **Command Palette (Ctrl+K / Cmd+K)**: Instant access to 10+ whitelisted system tools (Disk usage, Process tree, Block devices, etc.).
 - **Security Hub**: Admin password management and network configuration in a dedicated modal.
 - **Service Monitoring**: Quick-links to other apps/ports hosted on your machine.
