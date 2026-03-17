@@ -1,68 +1,52 @@
-# AiDash Project Context
+# AIDASH | AI-Native Autonomous Edge Manager
 
 ## Project Identity
-- **Name**: AiDash
-- **Tagline**: "A minimal AI-powered server dashboard."
-- **Goal**: Lightweight server monitoring and control for very small servers.
-- **Priorities**: Minimal RAM usage, minimal disk usage, minimal dependencies, fast startup.
+- **Name**: AIDASH
+- **Tagline**: "The high-performance, AI-native operating environment for headless edge servers."
+- **B.Tech Thesis Goal**: Distributed, Autonomous Resource Management & Explainable Security AI.
+- **Key Metrics**: Sub-30MB Image Size, <15MB Idle RAM usage.
 
-## Core Requirements (Original Prompt)
-- **Authentication**: Secure login (admin/admin), hashed passwords (SHA-256), session-based.
-- **Dashboard**: Real-time stats (CPU load, RAM usage, Disk capacity, Uptime).
-- **Service Management**: Monitor processes (focused on Node.js) and control via command palette.
-- **Service Link Dashboard**: UI listing services and ports for quick access.
-- **Alert System**: Notifications for high resource usage (e.g., >90% RAM, high load).
-- **Log Viewer**: Live streaming from `server.log` with search/filtering capabilities.
-- **Disk Explorer**: Breakdown of top-consuming folders using real system calls (`df`, `du`).
-- **AI Assistant**: Diagnostic chat interface suggesting approved commands (never auto-executing).
-- **Command Palette**: Keyboard-driven (Ctrl+K) interface for whitelisted commands.
-- **Modular Design**: Ability to enable/disable features via configuration.
-- **Deployment Helper**: Integration for basic repository updates.
+## Technical Foundation (Optimized for Thesis)
+- **Zero-Dependency Metrics**: Direct Linux Kernel `/proc` parsing for CPU delta and Memory (replacing heavy `systeminformation` library).
+- **Multi-Stage Alpine Architecture**: Extreme ROM optimization (Multi-stage Docker builds).
+- **Federated Fleet Monitoring**: Decentralized node discovery and unified health tracking for edge clusters.
 
-## Architecture
-- **Backend**: Node.js (`backend/server.js`) using built-in modules (`http`, `fs`, `os`, `crypto`, `child_process`).
-- **Frontend**: Vanilla HTML/JS/CSS (`frontend/index.html`) - Refined Glassmorphism UI.
-- **Configuration**: JSON-based (`config/default.json`) for services, modules, and command whitelisting.
+## AI & Security Innovations
+- **Hero Terminal V2**: Intelligence-first terminal with `SYSTEM`, `AI_EDGE`, and `MODEL` modes.
+- **Edge Anomaly Engine (ML)**: Moving Average and Euclidean variance-based anomaly detection running locally on the edge.
+- **Behavioral Fingerprinting (UBA)**: Pattern recognition for command history and temporal load analysis.
+- **Explainable AI (XAI)**: Human-readable "Why?" audit logs for every system intervention.
+- **Smart Safety Interceptor**: Context-aware command interception (e.g., `rm -rf`) with controlled bypass.
+- **Security Shadow Watcher**: Real-time file integrity monitoring for sensitive system paths (`/etc/passwd`, `.env`).
+- **Autonomous Self-Healing**: Automated cache dropping and service pruning triggered by high-confidence anomalies.
 
 ## Current Progress & Status
 - [x] Initial Project Structure & Git Workflow
-- [x] Backend Foundation & API Implementation
 - [x] Secure Authentication (SHA-256)
-- [x] Real-time Dashboard UI (Live Stats)
-- [x] Refined Glassmorphism UI Overhaul
-- [x] Process Monitoring (Real `ps aux` calls)
-- [x] Service Link Dashboard (Config-driven)
-- [x] Log Viewer & Real-time Filtering
-- [x] Disk Explorer (Real `df` and `du` calls)
-- [x] Full Interactive File Explorer (Browse, Read, Edit, Search, Upload)
-- [x] Advanced System Metrics (Per-core CPU, Temp, Ports, Users)
-- [x] AiDash OS Interface (System Bar, Date, Battery, Wi-Fi)
-- [x] Hardware Controls (Wi-Fi Scanning/Connecting, Brightness)
-- [x] Docker & Docker-Compose Support
-- [x] OS-Independent Metric Collection (systeminformation + node-wifi)
-- [x] AI Diagnostic Assistant (Context-aware)
-- [x] Keyboard-driven Command Palette (Ctrl+K)
-- [x] Modular Design (Feature toggles in config)
-- [x] Deployment Helper (Basic `git pull` & `npm install`)
-- [x] Documentation & Open Source Quality README
+- [x] **[NEW]** Multi-Stage Alpine Docker Transformation
+- [x] **[NEW]** Direct Kernel `/proc` Metric Collection
+- [x] **[NEW]** Hero Terminal V2 Integration
+- [x] **[NEW]** ML-based Anomaly Detection Engine
+- [x] **[NEW]** Behavioral Command Pattern Recognition
+- [x] **[NEW]** Explainable AI (XAI) Reasoning Layer
+- [x] **[NEW]** Federated Fleet Management (Multi-node adoption)
+- [x] **[NEW]** Safety Interceptor & Controlled Bypass
+- [x] **[NEW]** Security Shadow Watcher (File Integrity)
+- [x] **[NEW]** Autonomous AI Self-Healing Actions
+- [x] Full Interactive File Explorer (Host access via `/host`)
+- [x] Headless WiFi Module (Hardware-level `iw` / `wpa_cli`)
+- [x] Advanced Battery Hub & Energy-Aware Orchestration
 
 ## Technical Details
 - **Credentials**: `admin` / `admin`
 - **Port**: 3000 (default)
-- **Deployment**: Docker-ready (`docker-compose up -d`)
-- **Whitelisted Commands**: `ls`, `df -h`, `uptime`, `free -m`, `du -sh`, `ps aux`, `tail -n 100`, `git pull`, `npm install`
+- **Architecture**: Node.js 20 (Alpine) / Vanilla JS (No frameworks)
+- **AI Backend**: Rule-based (Offline), Ollama (Local), Gemini (Cloud)
+- **Branch**: `aidash-ai-core`
 
-## Deployment & Server AI Instructions
-To deploy AiDash on a new server, provide the following prompt to the server's AI (Gemini/CLI):
-
-> "Setup AiDash OS: 
-> 1. Check for Docker/Compose or Node.js 20+.
-> 2. Ensure system dependencies: `sudo apt-get install -y lm-sensors wireless-tools network-manager`.
-> 3. If Docker: Run `docker-compose up -d --build`.
-> 4. If Node: Run `npm install --production` and `npm start`.
-> 5. Confirm dashboard is live on port 3000."
-
-## Future Roadmap
-- Expanded Deployment Helper (Custom scripts, service auto-restarts).
-- Support for external notifications (Webhooks, email).
-- Multi-user management UI.
+## Deployment & Thesis Presentation
+The project is optimized for a live B.Tech defense:
+1. **Showcase Optimization**: Demonstrate the tiny Docker image size (<30MB).
+2. **Showcase Intelligence**: Trigger a manual "anomaly" (e.g., a stress test) and show the XAI reason.
+3. **Showcase Security**: Try running a `rm -rf` in the terminal and show the Safety Interceptor.
+4. **Showcase Fleet**: Add a remote node to the dashboard and monitor its live health.
