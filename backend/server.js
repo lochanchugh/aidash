@@ -174,13 +174,31 @@ async function updateMetrics() {
         if (!err) sysMetrics.totalSessions = parseInt(stdout.trim()) || 0;
     });
 
-    if (platform === 'darwin') {
-        exec("networksetup -getairportnetwork en0", (err, stdout) => {
-            if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
-            else sysMetrics.wifi = 'None';
-        });
-    } else if (platform === 'linux') {
+    // Native Ports counting
+    exec(platform === 'linux' ? 'ss -tuln | grep LISTEN | wc -l' : 'netstat -an | grep LISTEN | wc -l', (err, stdout) => {
+        if (!err) sysMetrics.ports = parseInt(stdout.trim()) || 0;
+    });
+
+    if (platform === 'linux') {
         const iface = "wlp0s20f3";
+        
+        // Temperature from /sys
+        try {
+            if (fs.existsSync('/sys/class/thermal/thermal_zone0/temp')) {
+                const t = fs.readFileSync('/sys/class/thermal/thermal_zone0/temp', 'utf8');
+                sysMetrics.temp = (parseInt(t) / 1000).toFixed(1) + '°C';
+            }
+        } catch(e) {}
+
+        // Battery from /sys
+        try {
+            if (fs.existsSync('/sys/class/power_supply/BAT0/capacity')) {
+                const cap = fs.readFileSync('/sys/class/power_supply/BAT0/capacity', 'utf8').trim();
+                const status = fs.readFileSync('/sys/class/power_supply/BAT0/status', 'utf8').trim();
+                sysMetrics.battery = { percent: parseInt(cap), isCharging: status === 'Charging' };
+            }
+        } catch(e) {}
+
         exec(`iw dev ${iface} link | grep SSID | cut -d: -f2`, (err, stdout) => {
             if (!err && stdout.trim()) {
                 sysMetrics.wifi = stdout.trim();
