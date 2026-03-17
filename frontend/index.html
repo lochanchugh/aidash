@@ -174,13 +174,14 @@
                 <h3>System Identity & AI Intel</h3>
                 <div style="font-size: 13px; display: grid; gap: 12px;">
                     <div style="background: rgba(59, 130, 246, 0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 8px;">
-                        <div style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.1em;">AI ANOMALY ENGINE</div>
+                        <div style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.1em;">AI ANOMALY ENGINE (XAI)</div>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                            <span style="color: var(--text-dim);">Threat Score</span>
+                            <span style="color: var(--text-dim);">Confidence Score</span>
                             <span id="ai-score" style="font-weight: 900; font-size: 18px;">0.0%</span>
                         </div>
                         <div class="bar-bg" style="height: 4px;"><div id="ai-bar" class="bar-fill" style="width: 0%; background: var(--primary)"></div></div>
-                        <div id="ai-status-text" style="font-size: 10px; margin-top: 8px; color: var(--success); font-weight: 700;">STABLE CORE TEMPERATURE & LOAD</div>
+                        <div id="ai-status-text" style="font-size: 10px; margin-top: 8px; color: var(--success); font-weight: 700;">SYSTEM NOMINAL</div>
+                        <div id="ai-why-text" style="font-size: 10px; margin-top: 4px; color: var(--text-dim); font-style: italic; line-height: 1.4; border-top: 1px solid var(--card-border); padding-top: 8px; margin-top: 10px;">Establishing baseline...</div>
                     </div>
                     
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Kernel</span> <span id="os-val">...</span></div>
@@ -432,6 +433,7 @@
             document.getElementById('ai-score').textContent = `${anomaly.score}%`;
             document.getElementById('ai-bar').style.width = `${anomaly.score}%`;
             document.getElementById('ai-status-text').textContent = anomaly.status;
+            document.getElementById('ai-why-text').textContent = anomaly.why || 'Monitoring patterns...';
             const tag = document.getElementById('anomaly-tag');
             tag.textContent = `● ${anomaly.status}`;
             tag.style.color = anomaly.score > 75 ? 'var(--danger)' : (anomaly.score > 40 ? 'var(--warning)' : 'var(--success)');

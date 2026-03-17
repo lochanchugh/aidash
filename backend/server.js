@@ -9,8 +9,42 @@ const PORT = process.env.PORT || 3000;
 const SESSION_TOKEN = 'aidash_session';
 const CONFIG_PATH = path.join(__dirname, '../config/default.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
+const PATTERNS_PATH = path.join(__dirname, 'patterns.json');
 const LOG_PATH = path.join(__dirname, '../server.log');
 const ROOT_DIR = path.resolve(__dirname, '..');
+
+function getPatterns() {
+    try {
+        if (fs.existsSync(PATTERNS_PATH)) return JSON.parse(fs.readFileSync(PATTERNS_PATH, 'utf8'));
+    } catch(e) {}
+    return {};
+}
+
+function learnCommand(cmd) {
+    const patterns = getPatterns();
+    const hour = new Date().getHours();
+    const baseCmd = cmd.split(' ')[0];
+    
+    if (!patterns[baseCmd]) patterns[baseCmd] = { count: 0, hours: {} };
+    patterns[baseCmd].count++;
+    patterns[baseCmd].hours[hour] = (patterns[baseCmd].hours[hour] || 0) + 1;
+    
+    fs.writeFileSync(PATTERNS_PATH, JSON.stringify(patterns, null, 2));
+}
+
+function getCommandNovelty(cmd) {
+    const patterns = getPatterns();
+    const hour = new Date().getHours();
+    const baseCmd = cmd.split(' ')[0];
+    
+    if (!patterns[baseCmd]) return 100; // Totally new command
+    
+    const hCount = patterns[baseCmd].hours[hour] || 0;
+    const prob = hCount / patterns[baseCmd].count;
+    
+    if (prob < 0.1) return 80; // Rare hour for this command
+    return 0; // Familiar pattern
+}
 
 function getConfig() {
     if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -30,7 +64,7 @@ let sysMetrics = {
     wifi: 'None',
     wifiError: '',
     date: '',
-    anomaly: { score: 0, status: 'Learning...', lastCheck: '' }
+    anomaly: { score: 0, status: 'Learning...', lastCheck: '', why: 'Establishing baseline...' }
 };
 
 // Historical data for graphs and AI
@@ -79,10 +113,21 @@ function runAnomalyDetection(currentCpu, currentMem) {
     // Anomaly Score (0-100)
     const score = Math.min(100, (diffCpu * 2) + (diffMem * 1.5));
     
+    // XAI: Generate a reason for the score
+    let why = 'System parameters within normal moving average.';
+    if (score > 30) {
+        const cpuSpike = currentCpu > avgCpu * 1.5;
+        const memSpike = currentMem > avgMem * 1.2;
+        if (cpuSpike && memSpike) why = `Simultaneous spike: CPU (${currentCpu}%) and RAM (${currentMem}%) exceeded baseline.`;
+        else if (cpuSpike) why = `CPU spike detected: ${currentCpu}% is significantly above the ${avgCpu.toFixed(1)}% baseline.`;
+        else if (memSpike) why = `Memory leak suspected: usage (${currentMem}%) climbed above ${avgMem.toFixed(1)}% average.`;
+    }
+
     sysMetrics.anomaly = {
         score: score.toFixed(1),
         status: score > 75 ? 'CRITICAL ANOMALY' : (score > 40 ? 'UNUSUAL ACTIVITY' : 'SYSTEM NOMINAL'),
-        lastCheck: new Date().toLocaleTimeString()
+        lastCheck: new Date().toLocaleTimeString(),
+        why: why
     };
 
     if (score > 85) {
@@ -387,7 +432,21 @@ function handleCommand(req, res) {
                 return;
             }
 
-            // 2. Safety Interceptor (AI-Native Security)
+            // 2. Behavioral AI Check (User Pattern Analysis)
+            const novelty = getCommandNovelty(command);
+            if (!bypass && novelty > 70) {
+                const hour = new Date().getHours();
+                const msg = `BEHAVIORAL ANOMALY: Command "${command.split(' ')[0]}" is unusual for this hour (${hour}:00).`;
+                alerts.push({ type: 'USER_AI', message: msg, severity: 'warning' });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    output: `[USER_AI_GUARD] ${msg}\nProceed? Append --force to your command.`, 
+                    intercepted: true 
+                }));
+                return;
+            }
+
+            // 3. Safety Interceptor (Static Guard)
             if (!bypass && dangerous.some(d => command.includes(d))) {
                 const msg = `AI GUARD: Potentially destructive command intercepted: "${command}"`;
                 alerts.push({ type: 'SAFE_MODE', message: msg, severity: 'warning' });
@@ -398,6 +457,9 @@ function handleCommand(req, res) {
                 }));
                 return;
             }
+
+            // 4. Learning Phase
+            learnCommand(command);
 
             exec(command, (err, stdout, stderr) => { 
                 handleJson(res, { output: stdout || stderr || '(No output)' }); 

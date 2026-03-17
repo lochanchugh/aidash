@@ -13,10 +13,11 @@ The terminal is no longer a "side tool"—it is the **Intelligence Hub**.
     - `[AI_EDGE]`: Local diagnostic assistant for system load and logs.
     - `[MODEL]`: Cloud/Local LLM integration (Gemini/Ollama) for code generation and deep debugging.
 
-### 2. Edge Anomaly Engine (Predictive Security)
-Moving from *threshold-based alerts* to *pattern-based detection*.
-- **Local ML Inference**: A lightweight Moving Average & Standard Deviation model runs in the backend to "learn" your server's normal heartbeat.
-- **Threat Scoring**: Real-time 0-100% anomaly score integrated into the Hero Section.
+### 2. Edge Anomaly Engine (Predictive & Behavioral)
+Moving from *threshold-based alerts* to *intelligent pattern-based detection*.
+- **Local ML Inference**: A lightweight Moving Average model runs in the backend to "learn" your server's normal heartbeat.
+- **Behavioral Fingerprinting**: The AI learns your command history. If a whitelisted command is run at an unusual time (e.g., `cat` at 3 AM), the **User-Behavior Analytics (UBA)** flags it.
+- **Explainable AI (XAI)**: No "Black Box" metrics. The dashboard provides a human-readable **"Why?"** for every anomaly (e.g., *"CPU spike detected: 45% is significantly above the 10% baseline"*).
 - **Proactive Interception**: Intercepts dangerous system states before hardware failure or security breaches occur.
 
 ### 4. Smart Safety Interceptor
