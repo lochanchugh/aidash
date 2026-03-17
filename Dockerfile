@@ -1,27 +1,24 @@
-# Use Node.js LTS (Slim for minimal size)
-FROM node:20-slim
+# Stage 1: Build dependencies
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
 
-# Install system dependencies for metrics, wifi, and headless server control
-RUN apt-get update && apt-get install -y \
-    lm-sensors \
+# Stage 2: Final minimal image
+FROM node:20-alpine
+WORKDIR /app
+
+# Install only essential runtime tools
+RUN apk add --no-cache \
     wireless-tools \
-    network-manager \
-    wpasupplicant \
+    wpa_supplicant \
     iw \
     iproute2 \
     procps \
-    && npm install -g @google/gemini-cli \
-    && rm -rf /var/lib/apt/lists/*
+    util-linux
 
-# Set working directory
-WORKDIR /app
-
-# Ensure root is in the netdev group for WiFi socket access
-RUN usermod -a -G netdev root || true
-
-COPY package*.json ./
-RUN npm install --production
+COPY --from=builder /app/node_modules ./node_modules
 COPY . .
 
 EXPOSE 3000
-CMD ["npm", "start"]
+CMD ["node", "backend/server.js"]

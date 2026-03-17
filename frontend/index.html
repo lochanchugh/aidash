@@ -83,7 +83,7 @@
 <body>
     <div class="system-bar" id="sys-bar" style="display: none;">
         <div style="display: flex; gap: 20px;">
-            <span style="color: var(--primary)">AIDASH_V2</span>
+            <span style="color: var(--primary)">AIDASH</span>
             <span id="bar-date" style="opacity: 0.5"></span>
         </div>
         <div style="display: flex; gap: 20px;">
@@ -142,19 +142,51 @@
             </div>
         </div>
 
-        <div class="grid" style="grid-template-columns: 1.8fr 1fr;">
-            <section class="glass-card">
-                <h3>Live Performance Metrics</h3>
-                <div style="height: 250px;"><canvas id="mainChart"></canvas></div>
+        <div class="grid" style="grid-template-columns: 2.2fr 1fr;">
+            <section class="glass-card" style="padding: 0; display: flex; flex-direction: column; border-color: var(--primary);">
+                <div style="padding: 12px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.1em; color: var(--primary);">HERO_TERMINAL_V2</span>
+                        <div id="term-mode-indicator" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: var(--primary); color: white; font-weight: 800;">SYSTEM</div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div id="anomaly-tag" style="font-size: 9px; font-weight: 800; color: var(--success);">● SYSTEM NOMINAL</div>
+                        <div style="width: 1px; height: 12px; background: var(--card-border);"></div>
+                        <button class="secondary" style="padding: 4px 8px; font-size: 9px;" onclick="switchTermMode('SYSTEM')">SYS</button>
+                        <button class="secondary" style="padding: 4px 8px; font-size: 9px;" onclick="switchTermMode('AI')">AI_EDGE</button>
+                        <button class="secondary" style="padding: 4px 8px; font-size: 9px;" onclick="switchTermMode('MODEL')">MODEL</button>
+                    </div>
+                </div>
+                
+                <div id="hero-term-body" style="height: 350px; background: #000; overflow-y: auto; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;">
+                    <div style="color: var(--primary); margin-bottom: 10px;">[INIT] AiDash Intelligence Layer Active...</div>
+                    <div id="hero-term-out"></div>
+                </div>
+
+                <div style="display: flex; background: #080808; padding: 0 15px; border-top: 1px solid var(--card-border); align-items: center;">
+                    <span id="term-prompt" style="color: var(--primary); font-family: monospace; font-weight: 800; font-size: 14px;">$</span>
+                    <input type="text" id="hero-term-input" style="flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 15px; outline: none;" placeholder="Command system or query AI...">
+                    <div id="term-loading" class="hidden" style="width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                </div>
             </section>
+
             <section class="glass-card">
-                <h3>System Identity</h3>
+                <h3>System Identity & AI Intel</h3>
                 <div style="font-size: 13px; display: grid; gap: 12px;">
+                    <div style="background: rgba(59, 130, 246, 0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 8px;">
+                        <div style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.1em;">AI ANOMALY ENGINE</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span style="color: var(--text-dim);">Threat Score</span>
+                            <span id="ai-score" style="font-weight: 900; font-size: 18px;">0.0%</span>
+                        </div>
+                        <div class="bar-bg" style="height: 4px;"><div id="ai-bar" class="bar-fill" style="width: 0%; background: var(--primary)"></div></div>
+                        <div id="ai-status-text" style="font-size: 10px; margin-top: 8px; color: var(--success); font-weight: 700;">STABLE CORE TEMPERATURE & LOAD</div>
+                    </div>
+                    
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Kernel</span> <span id="os-val">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Release</span> <span id="os-sub">...</span></div>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Uptime</span> <span id="hero-uptime">...</span></div>
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Ports</span> <span id="os-ports">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Users</span> <span id="os-users">...</span></div>
-                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU THREADS / CORES</span> <div id="cpu-cores" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--primary); display: flex; flex-wrap: wrap; gap: 4px;"></div></div>
+                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU LOAD HISTORY</span> <div style="height: 60px; width: 100%;"><canvas id="miniChart"></canvas></div></div>
                 </div>
             </section>
         </div>
@@ -298,18 +330,17 @@
             async get(url) { return fetch(url).then(r => r.json()); }
         };
 
-        let mainChart, currentDir = '.', currentFile = null;
+        let miniChart, currentDir = '.', currentFile = null, termMode = 'SYSTEM';
 
         function initChart() {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            mainChart = new Chart(ctx, {
+            const ctx = document.getElementById('miniChart').getContext('2d');
+            miniChart = new Chart(ctx, {
                 type: 'line',
                 data: { labels: [], datasets: [
-                    { label: 'CPU %', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0 },
-                    { label: 'MEM %', borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0 }
+                    { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1 }
                 ]},
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                    scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } }
+                    scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } }
                 }
             });
         }
@@ -320,12 +351,54 @@
             else { document.getElementById('login-err').textContent = data.message; }
         }
 
+        function switchTermMode(mode) {
+            termMode = mode;
+            document.getElementById('term-mode-indicator').textContent = mode;
+            const prompt = document.getElementById('term-prompt');
+            const input = document.getElementById('hero-term-input');
+            
+            if (mode === 'SYSTEM') { prompt.textContent = '$'; prompt.style.color = 'var(--primary)'; input.placeholder = "Enter shell command..."; }
+            else if (mode === 'AI') { prompt.textContent = 'AI>'; prompt.style.color = 'var(--success)'; input.placeholder = "Ask Edge-AI about system health..."; }
+            else { prompt.textContent = 'MDL>'; prompt.style.color = 'var(--accent)'; input.placeholder = "Query Cloud Model (Gemini/Ollama)..."; }
+        }
+
+        function writeToHero(text, type = 'output') {
+            const out = document.getElementById('hero-term-out');
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+            if (type === 'cmd') div.innerHTML = `<span style="color:var(--primary)">$</span> <span style="color:#fff">${text}</span>`;
+            else if (type === 'ai') div.innerHTML = `<span style="color:var(--success)">AI></span> <span style="color:#10b981">${text}</span>`;
+            else div.textContent = text;
+            out.appendChild(div);
+            document.getElementById('hero-term-body').scrollTop = document.getElementById('hero-term-body').scrollHeight;
+        }
+
+        async function handleHeroInput(e) {
+            if (e.key !== 'Enter') return;
+            const val = e.target.value.trim();
+            if (!val) return;
+            e.target.value = '';
+            
+            writeToHero(val, termMode === 'SYSTEM' ? 'cmd' : 'ai');
+            document.getElementById('term-loading').classList.remove('hidden');
+
+            if (termMode === 'SYSTEM') {
+                const res = await API.post('/api/command', { command: val });
+                writeToHero(res.output || '(Success, no output)');
+            } else {
+                const res = await API.post('/api/ai/ask', { prompt: val });
+                writeToHero(res.text, 'ai');
+                if (res.suggestion) writeToHero(`Suggestion: Try running '${res.suggestion}'`, 'output');
+            }
+            document.getElementById('term-loading').classList.add('hidden');
+        }
+
         function startApp() {
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('main-dashboard').classList.remove('hidden');
             document.getElementById('sys-bar').style.display = 'flex';
             
-            // Initialize Battery Toggle
+            document.getElementById('hero-term-input').onkeydown = handleHeroInput;
             document.getElementById('battery-stat-card').onclick = () => {
                 const details = document.getElementById('bat-details');
                 details.style.display = details.style.display === 'none' ? 'block' : 'none';
@@ -339,71 +412,35 @@
         }
 
         async function refreshAll() {
-            const [stats, disk, procs, history, svcs] = await Promise.all([
-                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/services'), API.get('/api/history'), API.get('/api/config-services')
+            const [stats, disk, history] = await Promise.all([
+                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history')
             ]);
 
             document.getElementById('host-title').textContent = stats.os.hostname.toUpperCase();
-            document.getElementById('system-uptime').textContent = `UPTIME: ${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
+            document.getElementById('hero-uptime').textContent = `${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             
-            // Battery Update
-            const bat = stats.metrics.battery;
-            const batVal = document.getElementById('bat-val');
-            const batBar = document.getElementById('bat-bar');
-            const batDetails = document.getElementById('bat-details');
-            
-            if (bat && bat !== 'N/A') {
-                batVal.textContent = `${bat.percent}%`;
-                batBar.style.width = `${bat.percent}%`;
-                if (bat.isCharging) batVal.textContent += ' ⚡';
-                batDetails.innerHTML = `VOLTAGE: ${bat.voltage || 'N/A'}V<br>HEALTH: ${bat.health}<br>CYCLE: ${bat.cycleCount}<br>CAPACITY: ${bat.capacity}`;
-                document.getElementById('bar-battery').textContent = `🔋 ${bat.percent}%${bat.isCharging ? '⚡' : ''}`;
-            } else {
-                batVal.textContent = 'N/A';
-                batBar.style.width = '0%';
-                batDetails.textContent = 'NO BATTERY DETECTED';
-                document.getElementById('bar-battery').textContent = '🔋 N/A';
-            }
+            // AI Anomaly Updates
+            const anomaly = stats.metrics.anomaly;
+            document.getElementById('ai-score').textContent = `${anomaly.score}%`;
+            document.getElementById('ai-bar').style.width = `${anomaly.score}%`;
+            document.getElementById('ai-status-text').textContent = anomaly.status;
+            const tag = document.getElementById('anomaly-tag');
+            tag.textContent = `● ${anomaly.status}`;
+            tag.style.color = anomaly.score > 60 ? 'var(--danger)' : (anomaly.score > 30 ? 'var(--warning)' : 'var(--success)');
 
-            document.getElementById('bar-user').textContent = `👤 ${localStorage.getItem('aidash_user')}`;
-            
-            document.getElementById('cpu-val').textContent = stats.load[0].toFixed(1);
-            document.getElementById('cpu-bar').style.width = Math.min(100, stats.load[0] * 10) + '%';
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
-
             document.getElementById('disk-val').textContent = disk.main.usage;
             document.getElementById('disk-bar').style.width = disk.main.usage;
-
             document.getElementById('os-temp').textContent = stats.metrics.temp;
             document.getElementById('os-val').textContent = stats.os.platform;
-            document.getElementById('os-sub').textContent = stats.os.release;
             document.getElementById('os-ports').textContent = stats.metrics.ports;
-            document.getElementById('os-users').textContent = stats.metrics.totalSessions;
 
-            if (stats.metrics.cpuCores && stats.metrics.cpuCores.length) {
-                document.getElementById('cpu-cores').innerHTML = stats.metrics.cpuCores.map(c => 
-                    `<span style="background:rgba(255,255,255,0.05); padding:2px 4px; border-radius:3px;">${c}%</span>`
-                ).join('');
-            }
-
-            document.getElementById('proc-list').innerHTML = procs.slice(0, 8).map(p => `
-                <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px 0">${p.pid}</td><td style="color:var(--primary)">${p.cpu}%</td><td>${p.cmd.split('/').pop()}</td></tr>
-            `).join('');
-
-            document.getElementById('svc-links').innerHTML = svcs.map(s => `
-                <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px; font-weight:700;">${s.name}</span>
-                    <button class="secondary" style="padding:4px 8px; font-size:10px;" onclick="window.open('http://'+location.hostname+':'+${s.port})">OPEN</button>
-                </div>
-            `).join('');
-
-            mainChart.data.labels = history.labels;
-            mainChart.data.datasets[0].data = history.cpu;
-            mainChart.data.datasets[1].data = history.mem;
-            mainChart.update('none');
+            miniChart.data.labels = history.labels;
+            miniChart.data.datasets[0].data = history.cpu;
+            miniChart.update('none');
         }
 
         function formatSize(bytes) {
