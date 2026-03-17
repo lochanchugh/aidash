@@ -26,11 +26,15 @@ A proactive security layer that sits between the user and the shell.
 - **Alert Integration**: Every interception is logged to the Hero Terminal and the Security Hub.
 - **Controlled Bypass**: Requires an explicit `--force` flag in `SYSTEM` mode, ensuring no accidental destructive actions.
 
-### 5. Multi-Provider AI Integration
-The `MODEL` mode supports hot-swapping between intelligence backends:
-- **Offline Mode**: Rule-based diagnostic logic for zero-connectivity environments.
-- **Ollama**: Local LLM integration (e.g., Llama 2) for privacy-focused, offline-capable deep analysis.
-- **Gemini**: Cloud-based high-reasoning for complex system debugging and optimization suggestions.
+### 6. Federated Fleet Commander
+Designed for distributed edge clusters.
+- **Node Adoption**: Centralized dashboard to "adopt" other AiDash edge nodes.
+- **Unified Health View**: Real-time aggregated stats (Load, RAM, Status) for the entire fleet from a single interface.
+
+### 7. XAI Audit & Transparency
+Proving the AI isn't a "Black Box" for academic and professional review.
+- **Mathematical Transparency**: View the moving baseline, Euclidean variance, and UBA pattern recognition states.
+- **Audit Logs**: Human-readable explanations for every automated intervention.
 
 ## 🚀 Key Features
 - **Real-time Performance Metrics**: Zero-overhead CPU/Memory tracking.

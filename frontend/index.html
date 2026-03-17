@@ -248,40 +248,52 @@
 
     <!-- Modals -->
     <div id="sec-modal" class="modal hidden">
-        <div class="glass-card" style="width: 500px; padding: 32px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="glass-card" style="width: 700px; padding: 32px; max-height: 90vh; display: flex; flex-direction: column;">
             <h2 style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-                Security & WiFi
+                AI Security & Federated Fleet
                 <button class="secondary" onclick="closeSecurityModal()">×</button>
             </h2>
             
-            <div style="flex-grow: 1; overflow-y: auto; margin-bottom: 24px; padding-right: 8px;">
-                <h3 style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    Available Networks
-                    <button class="secondary" style="font-size: 10px; padding: 4px 8px;" onclick="scanWifi()">REFRESH</button>
-                </h3>
-                
-                <div id="wifi-list-container" style="display: grid; gap: 8px; margin-bottom: 16px;">
-                    <!-- WiFi items will be injected here -->
-                </div>
-
-                <div id="wifi-join-form" class="hidden" style="background: rgba(255,255,255,0.03); border: 1px solid var(--primary); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-                    <div id="joining-ssid" style="font-weight: 800; font-size: 14px; margin-bottom: 12px; color: var(--primary);">JOINING: ...</div>
-                    <input type="password" id="wifi-pass" placeholder="Network Password" style="margin-bottom: 12px;">
-                    <div style="display: flex; gap: 8px;">
-                        <button id="join-btn" onclick="connectWifi()" style="flex-grow: 1;">CONNECT</button>
-                        <button class="secondary" onclick="cancelJoin()">CANCEL</button>
+            <div style="flex-grow: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <h3 style="margin-bottom: 12px; color: var(--primary);">Explainable AI (XAI) Engine</h3>
+                    <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px;">
+                        <div style="margin-bottom: 10px;">
+                            <span style="color:var(--text-dim)">Current Baseline:</span> 
+                            <span id="xai-baseline" style="color:var(--success)">Dynamic Moving Average</span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <span style="color:var(--text-dim)">UBA Profile:</span> 
+                            <span id="xai-uba" style="color:var(--primary)">Pattern Recognition Active</span>
+                        </div>
+                        <p style="color: var(--text-dim); line-height: 1.4;">
+                            The AI classifies anomalies by calculating the Euclidean distance from the 20-point rolling baseline. 
+                            Interceptions occur when <span style="color:var(--warning)">Novelty > 85%</span> or <span style="color:var(--warning)">Variance > 2.5σ</span>.
+                        </p>
                     </div>
+
+                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Admin Credentials</h3>
+                    <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
+                    <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
+                    <button onclick="changePassword()" style="width: 100%; justify-content: center; background: var(--accent);">UPDATE PASSWORD</button>
                 </div>
 
-                <div id="wifi-debug" style="font-size:10px; opacity:0.6; background:rgba(0,0,0,0.5); padding:8px; border-radius:6px; font-family:monospace; border:1px solid var(--success); margin-top: 12px;">
-                    Status: <span id="wifi-err-msg">System Operational</span>
+                <div>
+                    <h3 style="margin-bottom: 12px; color: var(--success);">Federated Node Discovery</h3>
+                    <div id="fleet-container" style="display: grid; gap: 8px; margin-bottom: 16px;">
+                        <!-- Nodes injected here -->
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px dashed var(--card-border);">
+                        <input type="text" id="node-name" placeholder="Node Name (e.g. Edge-02)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
+                        <input type="text" id="node-ip" placeholder="IP Address (e.g. 192.168.1.5)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
+                        <button class="secondary" onclick="addNode()" style="width: 100%; justify-content: center; font-size: 10px;">+ ADOPT NODE</button>
+                    </div>
+
+                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Wireless Spectrum</h3>
+                    <button class="secondary" style="width: 100%; margin-bottom: 8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
+                    <div id="wifi-list-container" style="max-height: 150px; overflow-y: auto;"></div>
                 </div>
             </div>
-
-            <h3 style="margin-bottom: 12px;">Admin Credentials</h3>
-            <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
-            <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
-            <button onclick="changePassword()" style="width: 100%; justify-content: center; background: var(--accent);">UPDATE SYSTEM PASSWORD</button>
         </div>
     </div>
 
@@ -639,7 +651,43 @@
             });
         };
 
-        function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); scanWifi(); }
+        async function addNode() {
+            const name = document.getElementById('node-name').value;
+            const ip = document.getElementById('node-ip').value;
+            if (!name || !ip) return;
+            const res = await API.post('/api/nodes/add', { name, ip });
+            if (res.success) {
+                document.getElementById('node-name').value = '';
+                document.getElementById('node-ip').value = '';
+                refreshFleet();
+            }
+        }
+
+        async function refreshFleet() {
+            const nodes = await API.get('/api/nodes/stats');
+            const container = document.getElementById('fleet-container');
+            if (nodes.length === 0) {
+                container.innerHTML = '<div style="font-size:10px; opacity:0.5; padding:10px; text-align:center; border:1px solid var(--card-border); border-radius:8px;">No remote nodes adopted</div>';
+                return;
+            }
+            container.innerHTML = nodes.map(n => `
+                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--card-border); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; font-weight:800; color:var(--primary)">${n.name}</div>
+                        <div style="font-size:9px; opacity:0.5;">IP: ${n.ip}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:11px; font-weight:700; color:var(--success)">${n.mem} RAM</div>
+                        <div style="font-size:9px; opacity:0.5;">L: ${n.load}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openSecurityModal() { 
+            document.getElementById('sec-modal').classList.remove('hidden'); 
+            refreshFleet();
+        }
         function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
 
         let selectedSSID = null;

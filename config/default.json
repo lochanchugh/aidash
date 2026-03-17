@@ -21,5 +21,6 @@
     { "name": "SSH", "port": 22 }
   ],
   "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", "whoami", "last", "nproc", "lsblk", "ls -lah"],
-  "dangerous_commands": ["rm -rf", "mkfs", "dd", "shutdown", "reboot"]
+  "dangerous_commands": ["rm -rf", "mkfs", "dd", "shutdown", "reboot"],
+  "nodes": []
 }

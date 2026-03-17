@@ -306,6 +306,10 @@ const server = http.createServer((req, res) => {
         handleWifiScan(res);
     } else if (url === '/api/wifi/connect' && method === 'POST') {
         handleWifiConnect(req, res);
+    } else if (url === '/api/nodes/add' && method === 'POST') {
+        handleNodeAdd(req, res);
+    } else if (url === '/api/nodes/stats' && method === 'GET') {
+        handleNodeStats(res);
     } else if (url === '/api/modules' && method === 'GET') {
         handleJson(res, config.modules || {});
     } else {
@@ -736,6 +740,32 @@ function handleWifiConnect(req, res) {
             }
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
     });
+}
+
+function handleNodeAdd(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { name, ip } = JSON.parse(body);
+            const config = getConfig();
+            if (!config.nodes) config.nodes = [];
+            config.nodes.push({ name, ip, status: 'Online' });
+            fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(400); res.end('Error'); }
+    });
+}
+
+async function handleNodeStats(res) {
+    const config = getConfig();
+    const nodes = config.nodes || [];
+    // Fleet simulation: In a real world, this would fetch from nodes[i].ip/api/stats
+    // For the B.Tech project, we'll return a simulated fleet state
+    handleJson(res, nodes.map(n => ({
+        ...n,
+        load: (Math.random() * 2).toFixed(2),
+        mem: (40 + Math.random() * 20).toFixed(1) + '%'
+    })));
 }
 
 function startServer(port) {
