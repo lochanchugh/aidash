@@ -411,9 +411,10 @@
             setInterval(refreshLogs, 10000);
         }
 
+        let lastAlertCount = 0;
         async function refreshAll() {
-            const [stats, disk, history] = await Promise.all([
-                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history')
+            const [stats, disk, history, alerts] = await Promise.all([
+                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'), API.get('/api/alerts')
             ]);
 
             document.getElementById('host-title').textContent = stats.os.hostname.toUpperCase();
@@ -428,7 +429,16 @@
             document.getElementById('ai-status-text').textContent = anomaly.status;
             const tag = document.getElementById('anomaly-tag');
             tag.textContent = `● ${anomaly.status}`;
-            tag.style.color = anomaly.score > 60 ? 'var(--danger)' : (anomaly.score > 30 ? 'var(--warning)' : 'var(--success)');
+            tag.style.color = anomaly.score > 75 ? 'var(--danger)' : (anomaly.score > 40 ? 'var(--warning)' : 'var(--success)');
+
+            // Handle New Alerts in Terminal
+            if (alerts && alerts.length > lastAlertCount) {
+                alerts.slice(lastAlertCount).forEach(a => {
+                    const color = a.severity === 'danger' ? '#f43f5e' : (a.severity === 'warning' ? '#f59e0b' : '#10b981');
+                    writeToHero(`<span style="color:${color}; font-weight:800;">[${a.type}]</span> ${a.message}`);
+                });
+                lastAlertCount = alerts.length;
+            }
 
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';

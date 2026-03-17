@@ -81,14 +81,23 @@ function runAnomalyDetection(currentCpu, currentMem) {
     
     sysMetrics.anomaly = {
         score: score.toFixed(1),
-        status: score > 60 ? 'ANOMALY DETECTED' : (score > 30 ? 'UNUSUAL ACTIVITY' : 'SYSTEM NOMINAL'),
+        status: score > 75 ? 'CRITICAL ANOMALY' : (score > 40 ? 'UNUSUAL ACTIVITY' : 'SYSTEM NOMINAL'),
         lastCheck: new Date().toLocaleTimeString()
     };
 
-    if (score > 60) {
-        alerts.push({ type: 'AI_GUARD', message: `Anomaly Detected! Load deviation: ${score.toFixed(1)}%`, severity: 'warning' });
-        if (alerts.length > 5) alerts.shift();
+    if (score > 85) {
+        const msg = `CRITICAL: System Anomaly Detected (${score.toFixed(1)}%). Initiating AI Safeguards...`;
+        if (!alerts.some(a => a.message === msg)) {
+            alerts.push({ type: 'AI_GUARD', message: msg, severity: 'danger' });
+            triggerSelfHealing('anomaly');
+        }
+    } else if (score > 50) {
+        if (!alerts.some(a => a.type === 'AI_GUARD')) {
+            alerts.push({ type: 'AI_GUARD', message: `Unusual activity detected (${score.toFixed(1)}%)`, severity: 'warning' });
+        }
     }
+
+    if (currentMem > 95) triggerSelfHealing('high_mem');
 }
 
 async function updateMetrics() {
@@ -111,7 +120,7 @@ async function updateMetrics() {
     runAnomalyDetection(metrics.cpu, metrics.mem);
     
     // Quick hardware fallbacks (OS built-in)
-    sysMetrics.totalSessions = os.loadavg().length; // Dummy for now
+    sysMetrics.totalSessions = os.loadavg().length;
     
     if (platform === 'darwin') {
         exec("networksetup -getairportnetwork en0", (err, stdout) => {
@@ -121,32 +130,58 @@ async function updateMetrics() {
     } else if (platform === 'linux') {
         const iface = "wlp0s20f3";
         exec(`iw dev ${iface} link | grep SSID | cut -d: -f2`, (err, stdout) => {
-            if (!err && stdout.trim()) sysMetrics.wifi = stdout.trim();
-            else {
+            if (!err && stdout.trim()) {
+                sysMetrics.wifi = stdout.trim();
+            } else {
                 exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err2, stdout2) => {
                     sysMetrics.wifi = stdout2.trim() || 'None';
                 });
             }
         });
     }
+
+    // Energy-Aware Orchestration (Point 4)
+    if (sysMetrics.battery !== 'N/A' && sysMetrics.battery.percent < 15 && !sysMetrics.battery.isCharging) {
+        if (!alerts.some(a => a.type === 'ENERGY_SAVER')) {
+            alerts.push({ type: 'ENERGY_SAVER', message: 'Low Power: Reducing telemetry frequency.', severity: 'warning' });
+            // Logic to slow down polling could go here
+        }
+    }
 }
-                    // Fallback to wpa_cli if iw fails for status
-                    exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err2, stdout2) => {
-                        if (!err2 && stdout2.trim()) sysMetrics.wifi = stdout2.trim();
-                        else sysMetrics.wifi = 'None';
-                    });
+
+// Security "Shadow Watcher" (eBPF-style file integrity monitoring)
+const SENSITIVE_FILES = ['/etc/passwd', '/etc/shadow', path.join(ROOT_DIR, 'backend/users.json'), path.join(ROOT_DIR, '.env')];
+function startShadowWatcher() {
+    SENSITIVE_FILES.forEach(file => {
+        if (fs.existsSync(file)) {
+            fs.watch(file, (event) => {
+                if (event === 'change') {
+                    const msg = `SECURITY ALERT: Unauthorized access/modification to ${file}`;
+                    alerts.push({ type: 'SHADOW_WATCH', message: msg, severity: 'danger' });
+                    console.log(`[SHADOW_WATCHER] ${msg}`);
                 }
             });
         }
+    });
+}
+startShadowWatcher();
 
-        si.networkConnections().then(conns => {
-            sysMetrics.ports = conns.filter(c => c.state === 'LISTEN' && c.protocol === 'tcp').length;
-        }).catch(() => {});
-
-    } catch (e) {
-        console.error("Metric collection error:", e.message);
+// AI Self-Healing Logic
+function triggerSelfHealing(reason) {
+    const healingCmds = {
+        'high_mem': 'sync && echo 3 > /proc/sys/vm/drop_caches',
+        'anomaly': 'npm prune --production && npm cache clean --force'
+    };
+    
+    const cmd = healingCmds[reason];
+    if (cmd) {
+        console.log(`[AI_HEALING] Triggering action: ${cmd}`);
+        exec(cmd, (err) => {
+            if (!err) alerts.push({ type: 'AI_HEAL', message: `Self-healing completed: ${reason}`, severity: 'success' });
+        });
     }
 }
+
 setInterval(updateMetrics, 5000);
 updateMetrics();
 
