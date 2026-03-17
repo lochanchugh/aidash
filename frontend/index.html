@@ -383,10 +383,15 @@
             document.getElementById('term-loading').classList.remove('hidden');
 
             if (termMode === 'SYSTEM') {
-                const res = await API.post('/api/command', { command: val });
+                const bypass = val.includes('--force');
+                const cleanCmd = val.replace('--force', '').trim();
+                const res = await API.post('/api/command', { command: cleanCmd, bypass: bypass });
                 writeToHero(res.output || '(Success, no output)');
+                if (res.intercepted) {
+                    writeToHero("ALERT: Safety Interceptor is active for this command.", "output");
+                }
             } else {
-                const res = await API.post('/api/ai/ask', { prompt: val });
+                const res = await API.post('/api/ai/ask', { prompt: val, mode: termMode });
                 writeToHero(res.text, 'ai');
                 if (res.suggestion) writeToHero(`Suggestion: Try running '${res.suggestion}'`, 'output');
             }

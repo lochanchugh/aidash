@@ -19,11 +19,17 @@ Moving from *threshold-based alerts* to *pattern-based detection*.
 - **Threat Scoring**: Real-time 0-100% anomaly score integrated into the Hero Section.
 - **Proactive Interception**: Intercepts dangerous system states before hardware failure or security breaches occur.
 
-### 3. Extreme Footprint Optimization
-Designed to outperform industry giants (Cockpit, Netdata) in resource consumption:
-- **ROM Footprint (<30MB)**: Multi-stage Alpine Linux Docker build.
-- **RAM Footprint (Ultra-Low)**: Zero-dependency metric collection by parsing kernel files (`/proc/stat`, `/proc/meminfo`) directly.
-- **Binary Streaming**: Replaces heavy JSON polling with efficient data streams for the terminal and metrics.
+### 4. Smart Safety Interceptor
+A proactive security layer that sits between the user and the shell.
+- **AI-Native Guard**: Intercepts high-risk commands (e.g., `rm -rf`, `mkfs`) based on a dynamically configurable danger list.
+- **Alert Integration**: Every interception is logged to the Hero Terminal and the Security Hub.
+- **Controlled Bypass**: Requires an explicit `--force` flag in `SYSTEM` mode, ensuring no accidental destructive actions.
+
+### 5. Multi-Provider AI Integration
+The `MODEL` mode supports hot-swapping between intelligence backends:
+- **Offline Mode**: Rule-based diagnostic logic for zero-connectivity environments.
+- **Ollama**: Local LLM integration (e.g., Llama 2) for privacy-focused, offline-capable deep analysis.
+- **Gemini**: Cloud-based high-reasoning for complex system debugging and optimization suggestions.
 
 ## 🚀 Key Features
 - **Real-time Performance Metrics**: Zero-overhead CPU/Memory tracking.

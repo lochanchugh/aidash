@@ -6,7 +6,13 @@
     "logs": true,
     "disk": true,
     "deployment": true,
-    "files": true
+    "files": true,
+    "safe_mode": true
+  },
+  "ai_provider": "offline",
+  "ai_config": {
+    "gemini_api_key": "",
+    "ollama_endpoint": "http://localhost:11434/api/generate"
   },
   "services": [
     { "name": "AiDash Dashboard", "port": 3000 },
@@ -14,5 +20,6 @@
     { "name": "Web Server", "port": 80 },
     { "name": "SSH", "port": 22 }
   ],
-  "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", "whoami", "last", "nproc", "lsblk", "ls -lah"]
+  "whitelist": ["ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", "whoami", "last", "nproc", "lsblk", "ls -lah"],
+  "dangerous_commands": ["rm -rf", "mkfs", "dd", "shutdown", "reboot"]
 }

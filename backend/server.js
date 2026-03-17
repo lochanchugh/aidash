@@ -375,11 +375,33 @@ function handleCommand(req, res) {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
-            const { command } = JSON.parse(body);
+            const { command, bypass } = JSON.parse(body);
             const config = getConfig();
             const whitelist = config.whitelist || WHITELIST_DEFAULT;
-            if (!whitelist.some(w => command.startsWith(w))) { res.writeHead(403); res.end('Forbidden'); return; }
-            exec(command, (err, stdout, stderr) => { handleJson(res, { output: stdout || stderr }); });
+            const dangerous = config.dangerous_commands || [];
+
+            // 1. Whitelist Check
+            if (!whitelist.some(w => command.startsWith(w))) {
+                res.writeHead(403);
+                res.end(JSON.stringify({ output: 'Error: Command not in whitelist for security.' }));
+                return;
+            }
+
+            // 2. Safety Interceptor (AI-Native Security)
+            if (!bypass && dangerous.some(d => command.includes(d))) {
+                const msg = `AI GUARD: Potentially destructive command intercepted: "${command}"`;
+                alerts.push({ type: 'SAFE_MODE', message: msg, severity: 'warning' });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    output: `[INTERCEPTED] ${msg}\nAre you sure? Use [SYSTEM] mode with --force to proceed.`, 
+                    intercepted: true 
+                }));
+                return;
+            }
+
+            exec(command, (err, stdout, stderr) => { 
+                handleJson(res, { output: stdout || stderr || '(No output)' }); 
+            });
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
@@ -393,38 +415,56 @@ function handleDeploy(req, res) {
     });
 }
 
-function handleAiAsk(req, res) {
+async function handleAiAsk(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
         try {
-            const { prompt, contextFile } = JSON.parse(body);
+            const { prompt, mode } = JSON.parse(body);
+            const config = getConfig();
+            const provider = config.ai_provider || 'offline';
+            
+            // Stats context for the AI
             const stats = {
                 uptime: os.uptime(),
-                load: os.loadavg(),
-                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
+                load: os.loadavg()[0],
+                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100,
+                anomaly: sysMetrics.anomaly.score
             };
-            
-            let response = { text: "I'm currently in offline mode. Ask me about CPU load, memory, or disk space.", suggestion: null };
 
-            const p = prompt.toLowerCase();
-            if (p.includes('load') || p.includes('cpu')) {
-                response.text = `CPU load is ${stats.load[0].toFixed(2)}. ${stats.load[0] > 1.0 ? "It's a bit high." : "Looking good!"}`;
-                response.suggestion = "ps aux";
-            } else if (p.includes('mem') || p.includes('ram')) {
-                response.text = `RAM usage is at ${stats.mem.toFixed(1)}%.`;
-                response.suggestion = "free -m";
-            } else if (p.includes('disk') || p.includes('space')) {
-                response.text = "You should check your disk partitions.";
-                response.suggestion = "df -h";
-            } else if (p.includes('who are you')) {
-                response.text = "I am the AiDash Assistant (Offline Mode).";
+            let response = { text: "AI Offline: I'm monitoring system health.", suggestion: null };
+
+            // Logic Switch based on Mode
+            if (mode === 'MODEL' && provider !== 'offline') {
+                if (provider === 'gemini' && config.ai_config.gemini_api_key) {
+                    // Gemini API Call (Conceptual for this project stage)
+                    response.text = `[Gemini Connect] Analyzing: "${prompt}"... (API Key Configured)`;
+                } else if (provider === 'ollama') {
+                    // Call local Ollama
+                    try {
+                        const ollamaRes = await fetch(config.ai_config.ollama_endpoint, {
+                            method: 'POST',
+                            body: JSON.stringify({ model: 'llama2', prompt: `Context: System Load ${stats.load}, RAM ${stats.mem}%. User asked: ${prompt}`, stream: false })
+                        }).then(r => r.json());
+                        response.text = ollamaRes.response;
+                    } catch(e) { response.text = "Ollama connection failed. Check endpoint."; }
+                }
+            } else {
+                // Offline Logic (Rule-based)
+                const p = prompt.toLowerCase();
+                if (p.includes('status') || p.includes('how')) {
+                    response.text = `System is currently in ${sysMetrics.anomaly.status} state. CPU Load: ${stats.load.toFixed(2)}.`;
+                } else if (p.includes('fix') || p.includes('high')) {
+                    response.text = "I recommend checking 'ps aux' for heavy processes or running AI self-healing.";
+                    response.suggestion = "ps aux";
+                } else {
+                    response.text = "I'm monitoring for anomalies. Ask me about system load, memory, or security.";
+                }
             }
 
             handleJson(res, response);
         } catch (e) { 
-            res.writeHead(400, { 'Content-Type': 'application/json' }); 
-            res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
+            res.writeHead(400); res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
         }
     });
 }
