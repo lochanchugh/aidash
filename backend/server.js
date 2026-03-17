@@ -71,26 +71,31 @@ let sysMetrics = {
 let history = { cpu: [], mem: [], labels: [] };
 let baseline = { cpu: 0, mem: 0, count: 0 };
 
-// Optimized Metric Collection (Reading directly from /proc for 0-overhead)
+let lastCpuSum = 0, lastCpuIdle = 0;
+
 function getProcMetrics() {
-    const metrics = { cpu: 0, mem: 0, cores: [] };
+    const metrics = { cpu: 0, mem: 0 };
     
     if (os.platform() === 'linux') {
         try {
-            // Memory from /proc/meminfo
+            // 1. Accurate Memory
             const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
             const total = parseInt(memInfo.match(/MemTotal:\s+(\d+)/)[1]);
-            const free = parseInt(memInfo.match(/MemAvailable:\s+(\d+)/)[1]);
-            metrics.mem = ((total - free) / total) * 100;
+            const available = parseInt(memInfo.match(/MemAvailable:\s+(\d+)/)[1]);
+            metrics.mem = ((total - available) / total) * 100;
 
-            // CPU from /proc/stat (simplified)
-            const stat1 = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(/\s+/).slice(1).map(Number);
-            const idle1 = stat1[3];
-            const total1 = stat1.reduce((a, b) => a + b, 0);
+            // 2. Accurate CPU (Delta Calculation)
+            const stats = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(/\s+/).slice(1).map(Number);
+            const idle = stats[3];
+            const sum = stats.reduce((a, b) => a + b, 0);
             
-            // We need a small delay for accurate CPU, but for now we'll use os.loadavg fallback or a previous state
-            metrics.cpu = os.loadavg()[0] * 10; // Simple approximation for now
-        } catch (e) {}
+            const diffIdle = idle - lastCpuIdle;
+            const diffTotal = sum - lastCpuSum;
+            metrics.cpu = diffTotal > 0 ? (1 - diffIdle / diffTotal) * 100 : 0;
+            
+            lastCpuSum = sum;
+            lastCpuIdle = idle;
+        } catch (e) { metrics.cpu = os.loadavg()[0] * 10; }
     } else {
         metrics.mem = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
         metrics.cpu = os.loadavg()[0] * 10;
@@ -164,9 +169,11 @@ async function updateMetrics() {
 
     runAnomalyDetection(metrics.cpu, metrics.mem);
     
-    // Quick hardware fallbacks (OS built-in)
-    sysMetrics.totalSessions = os.loadavg().length;
-    
+    // Proper session counting (Active Users)
+    exec('who | cut -d" " -f1 | sort | uniq | wc -l', (err, stdout) => {
+        if (!err) sysMetrics.totalSessions = parseInt(stdout.trim()) || 0;
+    });
+
     if (platform === 'darwin') {
         exec("networksetup -getairportnetwork en0", (err, stdout) => {
             if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
@@ -759,13 +766,31 @@ function handleNodeAdd(req, res) {
 async function handleNodeStats(res) {
     const config = getConfig();
     const nodes = config.nodes || [];
-    // Fleet simulation: In a real world, this would fetch from nodes[i].ip/api/stats
-    // For the B.Tech project, we'll return a simulated fleet state
-    handleJson(res, nodes.map(n => ({
-        ...n,
-        load: (Math.random() * 2).toFixed(2),
-        mem: (40 + Math.random() * 20).toFixed(1) + '%'
-    })));
+    
+    // Real Federated Fetch: Attempting to connect to other edge nodes
+    const results = await Promise.all(nodes.map(async n => {
+        try {
+            // Check if the node is the current host (loopback) to avoid infinite recursion
+            if (n.ip === 'localhost' || n.ip === '127.0.0.1') return { ...n, status: 'Online (Host)', load: os.loadavg()[0], mem: 'Self' };
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            
+            const stats = await fetch(`http://${n.ip}:3000/api/stats`, { signal: controller.signal }).then(r => r.json());
+            clearTimeout(timeout);
+            
+            return {
+                ...n,
+                status: 'Online',
+                load: stats.load[0].toFixed(2),
+                mem: ((stats.totalMem - stats.freeMem) / stats.totalMem * 100).toFixed(1) + '%'
+            };
+        } catch (e) {
+            return { ...n, status: 'Offline / Unreachable', load: 'N/A', mem: 'N/A' };
+        }
+    }));
+
+    handleJson(res, results);
 }
 
 function startServer(port) {
