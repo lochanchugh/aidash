@@ -60,3 +60,8 @@ Proving the AI isn't a "Black Box" for academic and professional review.
 - **Frontend**: Vanilla JS (Zero-Framework for RAM efficiency)
 - **Metrics**: Direct Linux Kernel /proc parsing
 - **AI**: Edge-based Anomaly Engine
+
+### 📊 Current Performance Status
+- **RAM Idle**: ~18.9 MiB (Goal: <15 MiB)
+- **Docker Image**: 155 MB (Goal: <30 MiB)
+- **Total Footprint**: ~159.7 MB

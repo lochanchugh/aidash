@@ -190,11 +190,12 @@ async function updateMetrics() {
             }
         } catch(e) {}
 
-        // Battery from /sys
+        // Battery from /sys (Try multiple paths)
         try {
-            if (fs.existsSync('/sys/class/power_supply/BAT0/capacity')) {
-                const cap = fs.readFileSync('/sys/class/power_supply/BAT0/capacity', 'utf8').trim();
-                const status = fs.readFileSync('/sys/class/power_supply/BAT0/status', 'utf8').trim();
+            const batPath = ['/sys/class/power_supply/BAT0', '/sys/class/power_supply/BAT1', '/sys/class/power_supply/battery'].find(p => fs.existsSync(p));
+            if (batPath) {
+                const cap = fs.readFileSync(path.join(batPath, 'capacity'), 'utf8').trim();
+                const status = fs.readFileSync(path.join(batPath, 'status'), 'utf8').trim();
                 sysMetrics.battery = { percent: parseInt(cap), isCharging: status === 'Charging' };
             }
         } catch(e) {}
@@ -291,6 +292,8 @@ const server = http.createServer((req, res) => {
         handleJson(res, history);
     } else if (url === '/api/stats' && method === 'GET') {
         handleStats(res);
+    } else if (url === '/api/processes' && method === 'GET') {
+        handleProcesses(res);
     } else if (url === '/api/services' && method === 'GET') {
         handleServices(res);
     } else if (url === '/api/config-services' && method === 'GET') {
@@ -411,11 +414,23 @@ function handleStats(res) {
 }
 
 function handleServices(res) {
-    exec('ps aux | grep node | grep -v grep', (err, stdout) => {
+    // Show top CPU/MEM consumers
+    exec('ps aux --sort=-%cpu | head -n 6', (err, stdout) => {
+        const lines = (stdout || '').trim().split('\n').slice(1);
+        handleJson(res, lines.map(l => {
+            const p = l.replace(/\s+/g, ' ').split(' ');
+            return { name: p[10] ? p[10].split('/').pop() : 'Unknown', pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
+        }));
+    });
+}
+
+function handleProcesses(res) {
+    // Specifically look for node/dashboard processes
+    exec('ps aux | grep -E "node|aidash" | grep -v grep', (err, stdout) => {
         const lines = (stdout || '').trim().split('\n').filter(l => l.length > 0);
         handleJson(res, lines.map(l => {
             const p = l.replace(/\s+/g, ' ').split(' ');
-            return { name: `Proc ${p[1]}`, pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
+            return { name: p[10] ? p[10].split('/').pop() : 'node', pid: p[1], cpu: p[2], mem: p[3], status: 'Running' };
         }));
     });
 }

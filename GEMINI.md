@@ -4,7 +4,10 @@
 - **Name**: AIDASH
 - **Tagline**: "The high-performance, AI-native operating environment for headless edge servers."
 - **B.Tech Thesis Goal**: Distributed, Autonomous Resource Management & Explainable Security AI.
-- **Key Metrics**: Sub-30MB Image Size, <15MB Idle RAM usage.
+- **Key Metrics**:
+    - **RAM Usage**: Target <15MB | **Current ~18.9MB**
+    - **Image Size**: Target <30MB | **Current ~155MB**
+    - **Source Footprint**: ~4.7MB (including logs)
 
 ## Technical Foundation (Optimized for Thesis)
 - **Zero-Dependency Metrics**: Direct Linux Kernel `/proc` parsing for CPU delta and Memory (replacing heavy `systeminformation` library).

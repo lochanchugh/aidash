@@ -434,8 +434,9 @@
 
         let lastAlertCount = 0;
         async function refreshAll() {
-            const [stats, disk, history, alerts] = await Promise.all([
-                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'), API.get('/api/alerts')
+            const [stats, disk, history, alerts, processes, services] = await Promise.all([
+                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'), API.get('/api/alerts'),
+                API.get('/api/processes'), API.get('/api/services')
             ]);
 
             document.getElementById('host-title').textContent = stats.os.hostname.toUpperCase();
@@ -443,6 +444,16 @@
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             
+            // Battery Update
+            const bat = stats.metrics.battery;
+            if (bat !== 'N/A') {
+                document.getElementById('bar-battery').textContent = `${bat.isCharging ? '⚡' : '🔋'} ${bat.percent}%`;
+                document.getElementById('os-battery').textContent = `${bat.percent}% (${bat.isCharging ? 'Charging' : 'Discharging'})`;
+            } else {
+                document.getElementById('bar-battery').textContent = '🔌 AC';
+                document.getElementById('os-battery').textContent = 'Wall Power / Unknown';
+            }
+
             // AI Anomaly Updates
             const anomaly = stats.metrics.anomaly;
             document.getElementById('ai-score').textContent = `${anomaly.score}%`;
@@ -452,6 +463,29 @@
             const tag = document.getElementById('anomaly-tag');
             tag.textContent = `● ${anomaly.status}`;
             tag.style.color = anomaly.score > 75 ? 'var(--danger)' : (anomaly.score > 40 ? 'var(--warning)' : 'var(--success)');
+
+            // Node Processes
+            const procHtml = (processes || []).map(p => `
+                <tr>
+                    <td style="color:var(--primary); font-weight:800;">${p.name}</td>
+                    <td>${p.pid}</td>
+                    <td style="color:var(--success);">${p.cpu}%</td>
+                    <td style="opacity:0.6;">${p.mem}%</td>
+                </tr>
+            `).join('');
+            document.getElementById('proc-list').innerHTML = procHtml || '<tr><td colspan="4" style="text-align:center; opacity:0.5; padding:20px;">No processes found</td></tr>';
+
+            // Active Services (Top Consumers)
+            const svcHtml = (services || []).map(s => `
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--card-border); padding:10px; border-radius:8px;">
+                    <div style="font-size:10px; font-weight:800; color:var(--primary); margin-bottom:4px;">${s.name}</div>
+                    <div style="display:flex; justify-content:space-between; font-size:9px; opacity:0.6;">
+                        <span>CPU: ${s.cpu}%</span>
+                        <span>PID: ${s.pid}</span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('svc-links').innerHTML = svcHtml || '<div style="grid-column: 1 / -1; text-align:center; opacity:0.5; padding:20px; border:1px dashed var(--card-border); border-radius:8px;">No active services tracked</div>';
 
             // Handle New Alerts in Terminal
             if (alerts && alerts.length > lastAlertCount) {
@@ -487,13 +521,23 @@
             if (isAbsolute) { currentDir = path; }
             else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
             else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
-            
+
             currentDir = currentDir.replace(/\/+/g, '/');
             if (!currentDir.startsWith('/host')) currentDir = '/host';
             document.getElementById('breadcrumbs').textContent = currentDir;
-            
-            const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
-            document.getElementById('file-list').innerHTML = items.map(i => `
+
+            let items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+
+            // Fallback for non-docker environments where /host doesn't exist
+            if (items.error && currentDir === '/host') {
+                console.warn("Host filesystem not available, falling back to local root.");
+                currentDir = '.';
+                document.getElementById('breadcrumbs').textContent = "LOCAL ROOT (Fallback)";
+                items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+            }
+
+            document.getElementById('file-list').innerHTML = (items.error ? [] : items).map(i => `
+
                 <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span>${i.isDir ? '📁' : '📄'}</span> 
@@ -579,7 +623,8 @@
             const chat = document.getElementById('chat-box');
             chat.innerHTML += `<div class="msg user">${prompt}</div>`;
             document.getElementById('chat-input').value = '';
-            const res = await API.post('/api/ai/ask', { prompt });
+            // Send default mode 'AI' for the diagnostic chat
+            const res = await API.post('/api/ai/ask', { prompt, mode: 'AI' });
             chat.innerHTML += `<div class="msg ai">${res.text}</div>`;
             chat.scrollTop = chat.scrollHeight;
         }
