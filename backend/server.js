@@ -294,22 +294,8 @@ const server = http.createServer((req, res) => {
         handleJson(res, history);
     } else if (url === '/api/stats' && method === 'GET') {
         handleStats(res);
-    } else if (url === '/api/processes' && method === 'GET') {
-        handleProcesses(res);
     } else if (url === '/api/services' && method === 'GET') {
         handleServices(res);
-    } else if (url === '/api/config-services' && method === 'GET') {
-        handleJson(res, config.services || []);
-    } else if (url === '/api/alerts' && method === 'GET') {
-        handleJson(res, alerts);
-    } else if (url === '/api/disk' && method === 'GET') {
-        if (config.modules.disk) handleDisk(res); else handleJson(res, { main: { usage: '0%' }, topDirs: [] });
-    } else if (url === '/api/logs' && method === 'GET') {
-        if (config.modules.logs) handleLogs(res); else res.end('Logs module disabled.');
-    } else if (url === '/api/command' && method === 'POST') {
-        handleCommand(req, res);
-    } else if (url === '/api/ai/ask' && method === 'POST') {
-        if (config.modules.ai) handleAiAsk(req, res); else handleJson(res, { text: 'AI module disabled.' });
     } else if (url === '/api/deploy' && method === 'POST') {
         handleDeploy(req, res);
     } else if (url.startsWith('/api/files/list') && method === 'GET') {
@@ -422,17 +408,6 @@ function handleServices(res) {
         handleJson(res, lines.map(l => {
             const p = l.trim().replace(/\s+/g, ' ').split(' ');
             return { name: p[10] ? p[10].split('/').pop() : 'Unknown', pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
-        }));
-    });
-}
-
-function handleProcesses(res) {
-    // Specifically look for node/dashboard processes
-    exec('ps aux | grep -E "node|aidash" | grep -v grep', (err, stdout) => {
-        const lines = (stdout || '').trim().split('\n').filter(l => l.length > 0);
-        handleJson(res, lines.map(l => {
-            const p = l.trim().replace(/\s+/g, ' ').split(' ');
-            return { name: p[10] ? p[10].split('/').pop() : 'node', pid: p[1], cpu: p[2], mem: p[3], status: 'Running' };
         }));
     });
 }
