@@ -448,10 +448,14 @@
             const bat = stats.metrics.battery;
             if (bat !== 'N/A') {
                 document.getElementById('bar-battery').textContent = `${bat.isCharging ? '⚡' : '🔋'} ${bat.percent}%`;
-                document.getElementById('os-battery').textContent = `${bat.percent}% (${bat.isCharging ? 'Charging' : 'Discharging'})`;
+                document.getElementById('bat-val').textContent = `${bat.percent}%`;
+                document.getElementById('bat-bar').style.width = `${bat.percent}%`;
+                document.getElementById('bat-details').textContent = `${bat.isCharging ? 'Charging' : 'Discharging'} @ /sys/class/power_supply`;
             } else {
                 document.getElementById('bar-battery').textContent = '🔌 AC';
-                document.getElementById('os-battery').textContent = 'Wall Power / Unknown';
+                document.getElementById('bat-val').textContent = '100%';
+                document.getElementById('bat-bar').style.width = '100%';
+                document.getElementById('bat-details').textContent = 'Stable AC Power Source';
             }
 
             // AI Anomaly Updates
@@ -500,7 +504,7 @@
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
             document.getElementById('disk-val').textContent = disk.main.usage;
             document.getElementById('disk-bar').style.width = disk.main.usage;
-            document.getElementById('os-temp').textContent = stats.metrics.temp;
+            document.getElementById('os-temp').textContent = stats.metrics.temp || 'N/A';
             document.getElementById('os-val').textContent = stats.os.platform;
             document.getElementById('os-ports').textContent = stats.metrics.ports;
 
