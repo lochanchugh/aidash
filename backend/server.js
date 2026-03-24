@@ -98,7 +98,9 @@ function getProcMetrics() {
         } catch (e) { metrics.cpu = os.loadavg()[0] * 10; }
     } else {
         metrics.mem = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
-        metrics.cpu = os.loadavg()[0] * 10;
+        // Normalize loadavg by CPU count for a better percentage representation on Mac
+        const load = os.loadavg()[0];
+        metrics.cpu = Math.min(100, (load / os.cpus().length) * 100);
     }
     return metrics;
 }
@@ -414,11 +416,11 @@ function handleStats(res) {
 }
 
 function handleServices(res) {
-    // Show top CPU/MEM consumers
-    exec('ps aux --sort=-%cpu | head -n 6', (err, stdout) => {
-        const lines = (stdout || '').trim().split('\n').slice(1);
+    // Show top CPU/MEM consumers (Portably across Linux and BSD/Mac)
+    exec('ps aux | sort -rnk 3 | head -n 6', (err, stdout) => {
+        const lines = (stdout || '').trim().split('\n');
         handleJson(res, lines.map(l => {
-            const p = l.replace(/\s+/g, ' ').split(' ');
+            const p = l.trim().replace(/\s+/g, ' ').split(' ');
             return { name: p[10] ? p[10].split('/').pop() : 'Unknown', pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
         }));
     });
@@ -429,7 +431,7 @@ function handleProcesses(res) {
     exec('ps aux | grep -E "node|aidash" | grep -v grep', (err, stdout) => {
         const lines = (stdout || '').trim().split('\n').filter(l => l.length > 0);
         handleJson(res, lines.map(l => {
-            const p = l.replace(/\s+/g, ' ').split(' ');
+            const p = l.trim().replace(/\s+/g, ' ').split(' ');
             return { name: p[10] ? p[10].split('/').pop() : 'node', pid: p[1], cpu: p[2], mem: p[3], status: 'Running' };
         }));
     });
