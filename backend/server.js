@@ -294,8 +294,16 @@ const server = http.createServer((req, res) => {
         handleJson(res, history);
     } else if (url === '/api/stats' && method === 'GET') {
         handleStats(res);
+    } else if (url === '/api/disk' && method === 'GET') {
+        handleDisk(res);
+    } else if (url === '/api/alerts' && method === 'GET') {
+        handleJson(res, alerts);
     } else if (url === '/api/services' && method === 'GET') {
         handleServices(res);
+    } else if (url === '/api/logs' && method === 'GET') {
+        handleLogs(res);
+    } else if (url === '/api/command' && method === 'POST') {
+        handleCommand(req, res);
     } else if (url === '/api/deploy' && method === 'POST') {
         handleDeploy(req, res);
     } else if (url.startsWith('/api/files/list') && method === 'GET') {
