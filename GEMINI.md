@@ -15,13 +15,14 @@
 - **Federated Fleet Monitoring**: Decentralized node discovery and unified health tracking for edge clusters.
 
 ## AI & Security Innovations
-- **Hero Terminal V2**: Intelligence-first terminal with `SYSTEM`, `AI_EDGE`, and `MODEL` modes.
+- **Hero Terminal V2**: Intelligence-first unified shell terminal with automated AI safety interception.
 - **Edge Anomaly Engine (ML)**: Moving Average and Euclidean variance-based anomaly detection running locally on the edge.
 - **Behavioral Fingerprinting (UBA)**: Pattern recognition for command history and temporal load analysis.
-- **Explainable AI (XAI)**: Human-readable "Why?" audit logs for every system intervention.
+- **Explainable AI (XAI)**: Human-readable "Why?" inline reasonings for every system intervention.
 - **Smart Safety Interceptor**: Context-aware command interception (e.g., `rm -rf`) with controlled bypass.
 - **Security Shadow Watcher**: Real-time file integrity monitoring for sensitive system paths (`/etc/passwd`, `.env`).
 - **Autonomous Self-Healing**: Automated cache dropping and service pruning triggered by high-confidence anomalies.
+- **Unified Process Manager**: Merged system-wide process monitoring with real-time resource utilization and command-line visibility.
 
 ## Current Progress & Status
 - [x] Initial Project Structure & Git Workflow
