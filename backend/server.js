@@ -58,6 +58,10 @@ let sysMetrics = {
     temp: 'N/A', 
     userList: 'None', 
     totalSessions: 0, 
+    totalProcesses: 0,
+    swap: 0,
+    ipv4: 'N/A',
+    ipv6: 'N/A',
     ports: 0, 
     cpuCores: [],
     battery: 'N/A',
@@ -68,23 +72,32 @@ let sysMetrics = {
 };
 
 // Historical data for graphs and AI
-let history = { cpu: [], mem: [], labels: [] };
+let history = { cpu: [], mem: [], swap: [], labels: [] };
 let baseline = { cpu: 0, mem: 0, count: 0 };
 
 let lastCpuSum = 0, lastCpuIdle = 0;
 
 function getProcMetrics() {
-    const metrics = { cpu: 0, mem: 0 };
+    const metrics = { cpu: 0, mem: 0, swap: 0, processes: 0 };
     
     if (os.platform() === 'linux') {
         try {
-            // 1. Accurate Memory
+            // 1. Accurate Memory & Swap
             const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
             const total = parseInt(memInfo.match(/MemTotal:\s+(\d+)/)[1]);
             const available = parseInt(memInfo.match(/MemAvailable:\s+(\d+)/)[1]);
             metrics.mem = ((total - available) / total) * 100;
 
-            // 2. Accurate CPU (Delta Calculation)
+            const swapTotal = parseInt(memInfo.match(/SwapTotal:\s+(\d+)/)[1]) || 0;
+            if (swapTotal > 0) {
+                const swapFree = parseInt(memInfo.match(/SwapFree:\s+(\d+)/)[1]);
+                metrics.swap = ((swapTotal - swapFree) / swapTotal) * 100;
+            }
+
+            // 2. Process Count
+            metrics.processes = fs.readdirSync('/proc').filter(f => /^\d+$/.test(f)).length;
+
+            // 3. Accurate CPU (Delta Calculation)
             const stats = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(/\s+/).slice(1).map(Number);
             const idle = stats[3];
             const sum = stats.reduce((a, b) => a + b, 0);
@@ -98,7 +111,7 @@ function getProcMetrics() {
         } catch (e) { metrics.cpu = os.loadavg()[0] * 10; }
     } else {
         metrics.mem = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
-        // Normalize loadavg by CPU count for a better percentage representation on Mac
+        metrics.processes = 0; // Fallback handled in updateMetrics
         const load = os.loadavg()[0];
         metrics.cpu = Math.min(100, (load / os.cpus().length) * 100);
     }
@@ -158,15 +171,19 @@ async function updateMetrics() {
     const metrics = getProcMetrics();
 
     sysMetrics.cpuCores = [metrics.cpu.toFixed(1)];
+    sysMetrics.swap = metrics.swap.toFixed(1);
+    sysMetrics.totalProcesses = metrics.processes;
     
     // Update history (max 20 points)
     history.labels.push(new Date().toLocaleTimeString());
     history.cpu.push(metrics.cpu.toFixed(1));
     history.mem.push(metrics.mem.toFixed(1));
+    history.swap.push(metrics.swap.toFixed(1));
     if (history.labels.length > 20) {
         history.labels.shift();
         history.cpu.shift();
         history.mem.shift();
+        history.swap.shift();
     }
 
     runAnomalyDetection(metrics.cpu, metrics.mem);
@@ -175,6 +192,22 @@ async function updateMetrics() {
     exec('who | cut -d" " -f1 | sort | uniq | wc -l', (err, stdout) => {
         if (!err) sysMetrics.totalSessions = parseInt(stdout.trim()) || 0;
     });
+
+    if (platform === 'darwin') {
+        exec('ps -ax | wc -l', (err, stdout) => {
+            if (!err) sysMetrics.totalProcesses = parseInt(stdout.trim());
+        });
+    }
+
+    // IP Address Collection for the specific interface
+    const iface = "wlp0s20f3";
+    const nets = os.networkInterfaces();
+    if (nets[iface]) {
+        const v4 = nets[iface].find(n => n.family === 'IPv4');
+        const v6 = nets[iface].find(n => n.family === 'IPv6');
+        sysMetrics.ipv4 = v4 ? v4.address : 'N/A';
+        sysMetrics.ipv6 = v6 ? v6.address : 'N/A';
+    }
 
     // Native Ports counting
     exec(platform === 'linux' ? 'ss -tuln | grep LISTEN | wc -l' : 'netstat -an | grep LISTEN | wc -l', (err, stdout) => {

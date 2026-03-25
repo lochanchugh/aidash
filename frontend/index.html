@@ -125,19 +125,23 @@
                 <div id="bat-details" style="font-size: 9px; margin-top: 8px; opacity: 0.6; display: none;"></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">MEMORY</div>
-                <div id="mem-val" class="stat-val">0.0GB</div>
-                <div class="bar-bg"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
+                <div class="stat-label">MEMORY / SWAP</div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div id="mem-val" class="stat-val">0.0GB</div>
+                    <div id="swap-val" style="font-size: 14px; color: var(--text-dim); font-weight: 700;">SWAP: 0%</div>
+                </div>
+                <div class="bar-bg" style="height: 4px; margin-top: 8px;"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
+                <div class="bar-bg" style="height: 2px; margin-top: 4px; opacity: 0.3;"><div id="swap-bar" class="bar-fill" style="width: 0%; background: var(--text-dim)"></div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">PROCESSES</div>
+                <div id="proc-count-val" class="stat-val">0</div>
+                <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">ACTIVE TASKS IN /PROC</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">STORAGE</div>
                 <div id="disk-val" class="stat-val">0%</div>
                 <div class="bar-bg"><div id="disk-bar" class="bar-fill" style="width: 0%; background: var(--success)"></div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">TEMP</div>
-                <div id="os-temp" class="stat-val" style="color: var(--warning)">N/A</div>
-                <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">THERMAL STATE: NORMAL</div>
             </div>
         </div>
 
@@ -147,6 +151,9 @@
                     <div style="display: flex; gap: 15px; align-items: center;">
                         <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.1em; color: var(--primary);">HERO_TERMINAL_V2</span>
                         <div id="anomaly-tag" style="font-size: 9px; font-weight: 800; color: var(--success);">● SYSTEM NOMINAL</div>
+                    </div>
+                    <div style="font-family: monospace; font-size: 10px; opacity: 0.6;" id="ip-display">
+                        IP: ...
                     </div>
                 </div>
                 
@@ -455,9 +462,17 @@
 
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
+            
+            document.getElementById('swap-val').textContent = `SWAP: ${stats.metrics.swap}%`;
+            document.getElementById('swap-bar').style.width = stats.metrics.swap + '%';
+            document.getElementById('proc-count-val').textContent = stats.metrics.totalProcesses;
+            
+            const ipv4 = stats.metrics.ipv4 || 'N/A';
+            const ipv6 = stats.metrics.ipv6 || 'N/A';
+            document.getElementById('ip-display').innerHTML = `<span title="${ipv6}" style="cursor:help">IP: ${ipv4}</span>`;
+
             document.getElementById('disk-val').textContent = disk.main.usage;
             document.getElementById('disk-bar').style.width = disk.main.usage;
-            document.getElementById('os-temp').textContent = stats.metrics.temp || 'N/A';
             document.getElementById('os-val').textContent = stats.os.platform;
             document.getElementById('os-ports').textContent = stats.metrics.ports;
 
