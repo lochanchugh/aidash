@@ -83,7 +83,7 @@
 <body>
     <div class="system-bar" id="sys-bar" style="display: none;">
         <div style="display: flex; gap: 20px;">
-            <span style="color: var(--primary)">AIDASH_V2</span>
+            <span style="color: var(--primary)">AIDASH</span>
             <span id="bar-date" style="opacity: 0.5"></span>
         </div>
         <div style="display: flex; gap: 20px;">
@@ -111,9 +111,8 @@
                 <p id="system-uptime" style="color: var(--text-dim); font-size: 12px; font-weight: 600;"></p>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="secondary" onclick="openTerminal()">$_ TERMINAL</button>
                 <button class="secondary" onclick="togglePalette()">⌘ COMMANDS</button>
-                <button class="secondary" onclick="openSecurityModal()">SECURITY</button>
+                <button class="secondary" onclick="openSecurityModal()">FLEET</button>
                 <button class="secondary" style="color: var(--danger)" onclick="logout()">LOGOUT</button>
             </div>
         </header>
@@ -126,35 +125,70 @@
                 <div id="bat-details" style="font-size: 9px; margin-top: 8px; opacity: 0.6; display: none;"></div>
             </div>
             <div class="stat-card">
-                <div class="stat-label">MEMORY</div>
-                <div id="mem-val" class="stat-val">0.0GB</div>
-                <div class="bar-bg"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
+                <div class="stat-label">MEMORY / SWAP</div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div id="mem-val" class="stat-val">0.0GB</div>
+                    <div id="swap-val" style="font-size: 14px; color: var(--text-dim); font-weight: 700;">SWAP: 0%</div>
+                </div>
+                <div class="bar-bg" style="height: 4px; margin-top: 8px;"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
+                <div class="bar-bg" style="height: 2px; margin-top: 4px; opacity: 0.3;"><div id="swap-bar" class="bar-fill" style="width: 0%; background: var(--text-dim)"></div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">PROCESSES</div>
+                <div id="proc-count-val" class="stat-val">0</div>
+                <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">ACTIVE TASKS IN /PROC</div>
             </div>
             <div class="stat-card">
                 <div class="stat-label">STORAGE</div>
                 <div id="disk-val" class="stat-val">0%</div>
                 <div class="bar-bg"><div id="disk-bar" class="bar-fill" style="width: 0%; background: var(--success)"></div></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">TEMP</div>
-                <div id="os-temp" class="stat-val" style="color: var(--warning)">N/A</div>
-                <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">THERMAL STATE: NORMAL</div>
-            </div>
         </div>
 
-        <div class="grid" style="grid-template-columns: 1.8fr 1fr;">
-            <section class="glass-card">
-                <h3>Live Performance Metrics</h3>
-                <div style="height: 250px;"><canvas id="mainChart"></canvas></div>
+        <div class="grid" style="grid-template-columns: 2.2fr 1fr;">
+            <section class="glass-card" style="padding: 0; display: flex; flex-direction: column; border-color: var(--primary);">
+                <div style="padding: 12px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.1em; color: var(--primary);">HERO_TERMINAL_V2</span>
+                        <div id="anomaly-tag" style="font-size: 9px; font-weight: 800; color: var(--success);">● SYSTEM NOMINAL</div>
+                    </div>
+                    <div style="font-family: monospace; font-size: 10px; opacity: 0.6;" id="ip-display">
+                        IP: ...
+                    </div>
+                </div>
+                
+                <div id="hero-term-body" style="height: 350px; background: #000; overflow-y: auto; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;">
+                    <div style="color: var(--primary); margin-bottom: 10px;">[INIT] AiDash Intelligence Layer Active...</div>
+                    <div id="hero-term-out"></div>
+                </div>
+
+                <div style="display: flex; background: #080808; padding: 0 15px; border-top: 1px solid var(--card-border); align-items: center;">
+                    <span id="term-prompt" style="color: var(--primary); font-family: monospace; font-weight: 800; font-size: 14px;">$</span>
+                    <input type="text" id="hero-term-input" style="flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 15px; outline: none;" placeholder="Command system or query AI...">
+                    <div id="term-loading" class="hidden" style="width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                </div>
             </section>
+
             <section class="glass-card">
-                <h3>System Identity</h3>
+                <h3>System Identity & AI Intel</h3>
                 <div style="font-size: 13px; display: grid; gap: 12px;">
+                    <div style="background: rgba(59, 130, 246, 0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 8px;">
+                        <div style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.1em;">AI ANOMALY ENGINE (XAI)</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                            <span style="color: var(--text-dim);">Confidence Score</span>
+                            <span id="ai-score" style="font-weight: 900; font-size: 18px;">0.0%</span>
+                        </div>
+                        <div class="bar-bg" style="height: 4px;"><div id="ai-bar" class="bar-fill" style="width: 0%; background: var(--primary)"></div></div>
+                        <div id="ai-status-text" style="font-size: 10px; margin-top: 8px; color: var(--success); font-weight: 700;">SYSTEM NOMINAL</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid var(--card-border); padding-top: 10px;">
+                            <div id="ai-why-text" style="font-size: 10px; color: var(--text-dim); font-style: italic; line-height: 1.4;">Establishing baseline...</div>
+                        </div>
+                    </div>
+                    
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Kernel</span> <span id="os-val">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Release</span> <span id="os-sub">...</span></div>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Uptime</span> <span id="hero-uptime">...</span></div>
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Ports</span> <span id="os-ports">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Users</span> <span id="os-users">...</span></div>
-                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU THREADS / CORES</span> <div id="cpu-cores" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--primary); display: flex; flex-wrap: wrap; gap: 4px;"></div></div>
+                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU LOAD HISTORY</span> <div style="height: 60px; width: 100%;"><canvas id="miniChart"></canvas></div></div>
                 </div>
             </section>
         </div>
@@ -184,71 +218,75 @@
             </section>
         </div>
 
-        <div class="grid">
-            <section class="glass-card">
-                <h3>System Logs</h3>
-                <div id="logs-out" class="logs-pre">Streaming logs...</div>
-            </section>
-            <section class="glass-card">
-                <h3>Diagnostic AI</h3>
-                <div id="chat-box" class="chat-area"></div>
-                <div style="display: flex; gap: 10px; margin-top: 16px;">
-                    <input type="text" id="chat-input" placeholder="Query AI assistant..." style="flex-grow: 1;">
-                    <button onclick="askAi()">SEND</button>
-                </div>
-            </section>
-        </div>
-
-        <div class="grid" style="grid-template-columns: 1fr 1.5fr;">
+        <div class="grid" style="grid-template-columns: 1fr;">
              <section class="glass-card">
-                <h3>Node Processes</h3>
-                <table style="width:100%; font-size: 12px; text-align: left;">
-                    <tbody id="proc-list"></tbody>
-                </table>
-            </section>
-            <section class="glass-card">
-                <h3>Active Services</h3>
-                <div id="svc-links" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+                <h3>Active System Processes</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width:100%; font-size: 12px; text-align: left; border-collapse: collapse;">
+                        <thead style="opacity: 0.5; font-size: 10px; border-bottom: 1px solid var(--card-border);">
+                            <tr>
+                                <th style="padding: 10px;">PROCESS NAME</th>
+                                <th>PID</th>
+                                <th>CPU%</th>
+                                <th>MEM%</th>
+                                <th>COMMAND</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proc-list"></tbody>
+                    </table>
+                </div>
             </section>
         </div>
     </div>
 
     <!-- Modals -->
     <div id="sec-modal" class="modal hidden">
-        <div class="glass-card" style="width: 500px; padding: 32px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="glass-card" style="width: 700px; padding: 32px; max-height: 90vh; display: flex; flex-direction: column;">
             <h2 style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-                Security & WiFi
+                AI Security & Federated Fleet
                 <button class="secondary" onclick="closeSecurityModal()">×</button>
             </h2>
             
-            <div style="flex-grow: 1; overflow-y: auto; margin-bottom: 24px; padding-right: 8px;">
-                <h3 style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                    Available Networks
-                    <button class="secondary" style="font-size: 10px; padding: 4px 8px;" onclick="scanWifi()">REFRESH</button>
-                </h3>
-                
-                <div id="wifi-list-container" style="display: grid; gap: 8px; margin-bottom: 16px;">
-                    <!-- WiFi items will be injected here -->
-                </div>
-
-                <div id="wifi-join-form" class="hidden" style="background: rgba(255,255,255,0.03); border: 1px solid var(--primary); padding: 16px; border-radius: 10px; margin-bottom: 16px;">
-                    <div id="joining-ssid" style="font-weight: 800; font-size: 14px; margin-bottom: 12px; color: var(--primary);">JOINING: ...</div>
-                    <input type="password" id="wifi-pass" placeholder="Network Password" style="margin-bottom: 12px;">
-                    <div style="display: flex; gap: 8px;">
-                        <button id="join-btn" onclick="connectWifi()" style="flex-grow: 1;">CONNECT</button>
-                        <button class="secondary" onclick="cancelJoin()">CANCEL</button>
+            <div style="flex-grow: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div>
+                    <h3 style="margin-bottom: 12px; color: var(--primary);">Explainable AI (XAI) Engine</h3>
+                    <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px;">
+                        <div style="margin-bottom: 10px;">
+                            <span style="color:var(--text-dim)">Current Baseline:</span> 
+                            <span id="xai-baseline" style="color:var(--success)">Dynamic Moving Average</span>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <span style="color:var(--text-dim)">UBA Profile:</span> 
+                            <span id="xai-uba" style="color:var(--primary)">Pattern Recognition Active</span>
+                        </div>
+                        <p style="color: var(--text-dim); line-height: 1.4;">
+                            The AI classifies anomalies by calculating the Euclidean distance from the 20-point rolling baseline. 
+                            Interceptions occur when <span style="color:var(--warning)">Novelty > 85%</span> or <span style="color:var(--warning)">Variance > 2.5σ</span>.
+                        </p>
                     </div>
+
+                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Admin Credentials</h3>
+                    <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
+                    <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
+                    <button onclick="changePassword()" style="width: 100%; justify-content: center; background: var(--accent);">UPDATE PASSWORD</button>
                 </div>
 
-                <div id="wifi-debug" style="font-size:10px; opacity:0.6; background:rgba(0,0,0,0.5); padding:8px; border-radius:6px; font-family:monospace; border:1px solid var(--success); margin-top: 12px;">
-                    Status: <span id="wifi-err-msg">System Operational</span>
+                <div>
+                    <h3 style="margin-bottom: 12px; color: var(--success);">Federated Node Discovery</h3>
+                    <div id="fleet-container" style="display: grid; gap: 8px; margin-bottom: 16px;">
+                        <!-- Nodes injected here -->
+                    </div>
+                    <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px dashed var(--card-border);">
+                        <input type="text" id="node-name" placeholder="Node Name (e.g. Edge-02)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
+                        <input type="text" id="node-ip" placeholder="IP Address (e.g. 192.168.1.5)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
+                        <button class="secondary" onclick="addNode()" style="width: 100%; justify-content: center; font-size: 10px;">+ ADOPT NODE</button>
+                    </div>
+
+                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Wireless Spectrum</h3>
+                    <button class="secondary" style="width: 100%; margin-bottom: 8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
+                    <div id="wifi-list-container" style="max-height: 150px; overflow-y: auto;"></div>
                 </div>
             </div>
-
-            <h3 style="margin-bottom: 12px;">Admin Credentials</h3>
-            <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
-            <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
-            <button onclick="changePassword()" style="width: 100%; justify-content: center; background: var(--accent);">UPDATE SYSTEM PASSWORD</button>
         </div>
     </div>
 
@@ -298,18 +336,17 @@
             async get(url) { return fetch(url).then(r => r.json()); }
         };
 
-        let mainChart, currentDir = '.', currentFile = null;
+        let miniChart, currentDir = '.', currentFile = null, termMode = 'SYSTEM';
 
         function initChart() {
-            const ctx = document.getElementById('mainChart').getContext('2d');
-            mainChart = new Chart(ctx, {
+            const ctx = document.getElementById('miniChart').getContext('2d');
+            miniChart = new Chart(ctx, {
                 type: 'line',
                 data: { labels: [], datasets: [
-                    { label: 'CPU %', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0 },
-                    { label: 'MEM %', borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0 }
+                    { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1 }
                 ]},
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                    scales: { y: { min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } }
+                    scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } }
                 }
             });
         }
@@ -320,12 +357,41 @@
             else { document.getElementById('login-err').textContent = data.message; }
         }
 
+        function writeToHero(text, type = 'output') {
+            const out = document.getElementById('hero-term-out');
+            const div = document.createElement('div');
+            div.style.marginBottom = '8px';
+            if (type === 'cmd') div.innerHTML = `<span style="color:var(--primary)">$</span> <span style="color:#fff">${text}</span>`;
+            else div.innerHTML = text;
+            out.appendChild(div);
+            document.getElementById('hero-term-body').scrollTop = document.getElementById('hero-term-body').scrollHeight;
+        }
+
+        async function handleHeroInput(e) {
+            if (e.key !== 'Enter') return;
+            const val = e.target.value.trim();
+            if (!val) return;
+            e.target.value = '';
+            
+            writeToHero(val, 'cmd');
+            document.getElementById('term-loading').classList.remove('hidden');
+
+            const bypass = val.includes('--force');
+            const cleanCmd = val.replace('--force', '').trim();
+            const res = await API.post('/api/command', { command: cleanCmd, bypass: bypass });
+            writeToHero(res.output || '(Success, no output)');
+            if (res.intercepted) {
+                writeToHero("ALERT: Safety Interceptor is active for this command.", "output");
+            }
+            document.getElementById('term-loading').classList.add('hidden');
+        }
+
         function startApp() {
             document.getElementById('login-view').classList.add('hidden');
             document.getElementById('main-dashboard').classList.remove('hidden');
             document.getElementById('sys-bar').style.display = 'flex';
             
-            // Initialize Battery Toggle
+            document.getElementById('hero-term-input').onkeydown = handleHeroInput;
             document.getElementById('battery-stat-card').onclick = () => {
                 const details = document.getElementById('bat-details');
                 details.style.display = details.style.display === 'none' ? 'block' : 'none';
@@ -335,75 +401,84 @@
             refreshAll();
             browseFiles('/host', true);
             setInterval(refreshAll, 5000);
-            setInterval(refreshLogs, 10000);
         }
 
+        let lastAlertCount = 0;
         async function refreshAll() {
-            const [stats, disk, procs, history, svcs] = await Promise.all([
-                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/services'), API.get('/api/history'), API.get('/api/config-services')
+            const [stats, disk, history, alerts, services] = await Promise.all([
+                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'), API.get('/api/alerts'),
+                API.get('/api/services')
             ]);
 
             document.getElementById('host-title').textContent = stats.os.hostname.toUpperCase();
-            document.getElementById('system-uptime').textContent = `UPTIME: ${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
+            document.getElementById('hero-uptime').textContent = `${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             
             // Battery Update
             const bat = stats.metrics.battery;
-            const batVal = document.getElementById('bat-val');
-            const batBar = document.getElementById('bat-bar');
-            const batDetails = document.getElementById('bat-details');
-            
-            if (bat && bat !== 'N/A') {
-                batVal.textContent = `${bat.percent}%`;
-                batBar.style.width = `${bat.percent}%`;
-                if (bat.isCharging) batVal.textContent += ' ⚡';
-                batDetails.innerHTML = `VOLTAGE: ${bat.voltage || 'N/A'}V<br>HEALTH: ${bat.health}<br>CYCLE: ${bat.cycleCount}<br>CAPACITY: ${bat.capacity}`;
-                document.getElementById('bar-battery').textContent = `🔋 ${bat.percent}%${bat.isCharging ? '⚡' : ''}`;
+            if (bat !== 'N/A') {
+                document.getElementById('bar-battery').textContent = `${bat.isCharging ? '⚡' : '🔋'} ${bat.percent}%`;
+                document.getElementById('bat-val').textContent = `${bat.percent}%`;
+                document.getElementById('bat-bar').style.width = `${bat.percent}%`;
+                document.getElementById('bat-details').textContent = `${bat.isCharging ? 'Charging' : 'Discharging'} @ /sys/class/power_supply`;
             } else {
-                batVal.textContent = 'N/A';
-                batBar.style.width = '0%';
-                batDetails.textContent = 'NO BATTERY DETECTED';
-                document.getElementById('bar-battery').textContent = '🔋 N/A';
+                document.getElementById('bar-battery').textContent = '🔌 AC';
+                document.getElementById('bat-val').textContent = '100%';
+                document.getElementById('bat-bar').style.width = '100%';
+                document.getElementById('bat-details').textContent = 'Stable AC Power Source';
             }
 
-            document.getElementById('bar-user').textContent = `👤 ${localStorage.getItem('aidash_user')}`;
-            
-            document.getElementById('cpu-val').textContent = stats.load[0].toFixed(1);
-            document.getElementById('cpu-bar').style.width = Math.min(100, stats.load[0] * 10) + '%';
+            // AI Anomaly Updates
+            const anomaly = stats.metrics.anomaly;
+            document.getElementById('ai-score').textContent = `${anomaly.score}%`;
+            document.getElementById('ai-bar').style.width = `${anomaly.score}%`;
+            document.getElementById('ai-status-text').textContent = anomaly.status;
+            document.getElementById('ai-why-text').textContent = anomaly.why || 'Monitoring patterns...';
+            const tag = document.getElementById('anomaly-tag');
+            tag.textContent = `● ${anomaly.status}`;
+            tag.style.color = anomaly.score > 75 ? 'var(--danger)' : (anomaly.score > 40 ? 'var(--warning)' : 'var(--success)');
+
+            // Active System Processes
+            const procHtml = (services || []).map(p => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                    <td style="color:var(--primary); font-weight:800; padding:10px;">${p.name}</td>
+                    <td>${p.pid}</td>
+                    <td style="color:var(--success); font-weight:700;">${p.cpu}%</td>
+                    <td style="opacity:0.6;">${p.mem}%</td>
+                    <td style="font-size:10px; opacity:0.4; font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${p.cmd || ''}</td>
+                </tr>
+            `).join('');
+            document.getElementById('proc-list').innerHTML = procHtml || '<tr><td colspan="5" style="text-align:center; opacity:0.5; padding:20px;">No processes found</td></tr>';
+
+            // Handle New Alerts in Terminal
+            if (alerts && alerts.length > lastAlertCount) {
+                alerts.slice(lastAlertCount).forEach(a => {
+                    const color = a.severity === 'danger' ? '#f43f5e' : (a.severity === 'warning' ? '#f59e0b' : '#10b981');
+                    writeToHero(`<span style="color:${color}; font-weight:800;">[${a.type}]</span> ${a.message}`);
+                });
+                lastAlertCount = alerts.length;
+            }
+
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
+            
+            document.getElementById('swap-val').textContent = `SWAP: ${stats.metrics.swap}%`;
+            document.getElementById('swap-bar').style.width = stats.metrics.swap + '%';
+            document.getElementById('proc-count-val').textContent = stats.metrics.totalProcesses;
+            
+            const ipv4 = stats.metrics.ipv4 || 'N/A';
+            const ipv6 = stats.metrics.ipv6 || 'N/A';
+            document.getElementById('ip-display').innerHTML = `<span title="${ipv6}" style="cursor:help">IP: ${ipv4}</span>`;
 
             document.getElementById('disk-val').textContent = disk.main.usage;
             document.getElementById('disk-bar').style.width = disk.main.usage;
-
-            document.getElementById('os-temp').textContent = stats.metrics.temp;
             document.getElementById('os-val').textContent = stats.os.platform;
-            document.getElementById('os-sub').textContent = stats.os.release;
             document.getElementById('os-ports').textContent = stats.metrics.ports;
-            document.getElementById('os-users').textContent = stats.metrics.totalSessions;
 
-            if (stats.metrics.cpuCores && stats.metrics.cpuCores.length) {
-                document.getElementById('cpu-cores').innerHTML = stats.metrics.cpuCores.map(c => 
-                    `<span style="background:rgba(255,255,255,0.05); padding:2px 4px; border-radius:3px;">${c}%</span>`
-                ).join('');
-            }
-
-            document.getElementById('proc-list').innerHTML = procs.slice(0, 8).map(p => `
-                <tr style="border-bottom:1px solid var(--card-border)"><td style="padding:8px 0">${p.pid}</td><td style="color:var(--primary)">${p.cpu}%</td><td>${p.cmd.split('/').pop()}</td></tr>
-            `).join('');
-
-            document.getElementById('svc-links').innerHTML = svcs.map(s => `
-                <div style="background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:12px; font-weight:700;">${s.name}</span>
-                    <button class="secondary" style="padding:4px 8px; font-size:10px;" onclick="window.open('http://'+location.hostname+':'+${s.port})">OPEN</button>
-                </div>
-            `).join('');
-
-            mainChart.data.labels = history.labels;
-            mainChart.data.datasets[0].data = history.cpu;
-            mainChart.data.datasets[1].data = history.mem;
-            mainChart.update('none');
+            miniChart.data.labels = history.labels;
+            miniChart.data.datasets[0].data = history.cpu;
+            miniChart.update('none');
         }
 
         function formatSize(bytes) {
@@ -418,13 +493,23 @@
             if (isAbsolute) { currentDir = path; }
             else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
             else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
-            
+
             currentDir = currentDir.replace(/\/+/g, '/');
             if (!currentDir.startsWith('/host')) currentDir = '/host';
             document.getElementById('breadcrumbs').textContent = currentDir;
-            
-            const items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
-            document.getElementById('file-list').innerHTML = items.map(i => `
+
+            let items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+
+            // Fallback for non-docker environments where /host doesn't exist
+            if (items.error && currentDir === '/host') {
+                console.warn("Host filesystem not available, falling back to local root.");
+                currentDir = '.';
+                document.getElementById('breadcrumbs').textContent = "LOCAL ROOT (Fallback)";
+                items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+            }
+
+            document.getElementById('file-list').innerHTML = (items.error ? [] : items).map(i => `
+
                 <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span>${i.isDir ? '📁' : '📄'}</span> 
@@ -505,22 +590,11 @@
             document.getElementById('logs-out').scrollTop = document.getElementById('logs-out').scrollHeight;
         }
 
-        async function askAi() {
-            const prompt = document.getElementById('chat-input').value; if(!prompt) return;
-            const chat = document.getElementById('chat-box');
-            chat.innerHTML += `<div class="msg user">${prompt}</div>`;
-            document.getElementById('chat-input').value = '';
-            const res = await API.post('/api/ai/ask', { prompt });
-            chat.innerHTML += `<div class="msg ai">${res.text}</div>`;
-            chat.scrollTop = chat.scrollHeight;
-        }
-
         async function execCmd(command) {
             const res = await API.post('/api/command', { command });
-            if (document.getElementById('term-modal').classList.contains('hidden')) {
-                alert("$ " + command + "\n\n" + (res.output || "No output."));
-            } else {
-                const termOut = document.getElementById('term-out');
+            // This is the standalone terminal modal, if still used
+            const termOut = document.getElementById('term-out');
+            if (termOut) {
                 termOut.textContent += `\n$ ${command}\n${res.output || '(No output)'}\n`;
                 termOut.scrollTop = termOut.scrollHeight;
             }
@@ -585,7 +659,43 @@
             });
         };
 
-        function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); scanWifi(); }
+        async function addNode() {
+            const name = document.getElementById('node-name').value;
+            const ip = document.getElementById('node-ip').value;
+            if (!name || !ip) return;
+            const res = await API.post('/api/nodes/add', { name, ip });
+            if (res.success) {
+                document.getElementById('node-name').value = '';
+                document.getElementById('node-ip').value = '';
+                refreshFleet();
+            }
+        }
+
+        async function refreshFleet() {
+            const nodes = await API.get('/api/nodes/stats');
+            const container = document.getElementById('fleet-container');
+            if (nodes.length === 0) {
+                container.innerHTML = '<div style="font-size:10px; opacity:0.5; padding:10px; text-align:center; border:1px solid var(--card-border); border-radius:8px;">No remote nodes adopted</div>';
+                return;
+            }
+            container.innerHTML = nodes.map(n => `
+                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--card-border); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:12px; font-weight:800; color:var(--primary)">${n.name}</div>
+                        <div style="font-size:9px; opacity:0.5;">IP: ${n.ip}</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:11px; font-weight:700; color:var(--success)">${n.mem} RAM</div>
+                        <div style="font-size:9px; opacity:0.5;">L: ${n.load}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openSecurityModal() { 
+            document.getElementById('sec-modal').classList.remove('hidden'); 
+            refreshFleet();
+        }
         function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
 
         let selectedSSID = null;

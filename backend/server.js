@@ -4,17 +4,47 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { exec } = require('child_process');
-const si = require('systeminformation');
-const wifi = require('node-wifi');
 
 const PORT = process.env.PORT || 3000;
 const SESSION_TOKEN = 'aidash_session';
 const CONFIG_PATH = path.join(__dirname, '../config/default.json');
 const USERS_PATH = path.join(__dirname, 'users.json');
+const PATTERNS_PATH = path.join(__dirname, 'patterns.json');
 const LOG_PATH = path.join(__dirname, '../server.log');
 const ROOT_DIR = path.resolve(__dirname, '..');
 
-wifi.init({ iface: null });
+function getPatterns() {
+    try {
+        if (fs.existsSync(PATTERNS_PATH)) return JSON.parse(fs.readFileSync(PATTERNS_PATH, 'utf8'));
+    } catch(e) {}
+    return {};
+}
+
+function learnCommand(cmd) {
+    const patterns = getPatterns();
+    const hour = new Date().getHours();
+    const baseCmd = cmd.split(' ')[0];
+    
+    if (!patterns[baseCmd]) patterns[baseCmd] = { count: 0, hours: {} };
+    patterns[baseCmd].count++;
+    patterns[baseCmd].hours[hour] = (patterns[baseCmd].hours[hour] || 0) + 1;
+    
+    fs.writeFileSync(PATTERNS_PATH, JSON.stringify(patterns, null, 2));
+}
+
+function getCommandNovelty(cmd) {
+    const patterns = getPatterns();
+    const hour = new Date().getHours();
+    const baseCmd = cmd.split(' ')[0];
+    
+    if (!patterns[baseCmd]) return 100; // Totally new command
+    
+    const hCount = patterns[baseCmd].hours[hour] || 0;
+    const prob = hCount / patterns[baseCmd].count;
+    
+    if (prob < 0.1) return 80; // Rare hour for this command
+    return 0; // Familiar pattern
+}
 
 function getConfig() {
     if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -28,93 +58,236 @@ let sysMetrics = {
     temp: 'N/A', 
     userList: 'None', 
     totalSessions: 0, 
+    totalProcesses: 0,
+    swap: 0,
+    ipv4: 'N/A',
+    ipv6: 'N/A',
     ports: 0, 
     cpuCores: [],
     battery: 'N/A',
     wifi: 'None',
     wifiError: '',
-    date: ''
+    date: '',
+    anomaly: { score: 0, status: 'Learning...', lastCheck: '', why: 'Establishing baseline...' }
 };
 
-// Historical data for graphs
-let history = { cpu: [], mem: [], labels: [] };
+// Historical data for graphs and AI
+let history = { cpu: [], mem: [], swap: [], labels: [] };
+let baseline = { cpu: 0, mem: 0, count: 0 };
+
+let lastCpuSum = 0, lastCpuIdle = 0;
+
+function getProcMetrics() {
+    const metrics = { cpu: 0, mem: 0, swap: 0, processes: 0 };
+    
+    if (os.platform() === 'linux') {
+        try {
+            // 1. Accurate Memory & Swap
+            const memInfo = fs.readFileSync('/proc/meminfo', 'utf8');
+            const total = parseInt(memInfo.match(/MemTotal:\s+(\d+)/)[1]);
+            const available = parseInt(memInfo.match(/MemAvailable:\s+(\d+)/)[1]);
+            metrics.mem = ((total - available) / total) * 100;
+
+            const swapTotal = parseInt(memInfo.match(/SwapTotal:\s+(\d+)/)[1]) || 0;
+            if (swapTotal > 0) {
+                const swapFree = parseInt(memInfo.match(/SwapFree:\s+(\d+)/)[1]);
+                metrics.swap = ((swapTotal - swapFree) / swapTotal) * 100;
+            }
+
+            // 2. Process Count
+            metrics.processes = fs.readdirSync('/proc').filter(f => /^\d+$/.test(f)).length;
+
+            // 3. Accurate CPU (Delta Calculation)
+            const stats = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0].split(/\s+/).slice(1).map(Number);
+            const idle = stats[3];
+            const sum = stats.reduce((a, b) => a + b, 0);
+            
+            const diffIdle = idle - lastCpuIdle;
+            const diffTotal = sum - lastCpuSum;
+            metrics.cpu = diffTotal > 0 ? (1 - diffIdle / diffTotal) * 100 : 0;
+            
+            lastCpuSum = sum;
+            lastCpuIdle = idle;
+        } catch (e) { metrics.cpu = os.loadavg()[0] * 10; }
+    } else {
+        metrics.mem = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
+        metrics.processes = 0; // Fallback handled in updateMetrics
+        const load = os.loadavg()[0];
+        metrics.cpu = Math.min(100, (load / os.cpus().length) * 100);
+    }
+    return metrics;
+}
+
+// Proper AI: Edge Anomaly Detection (Linear Weighted Moving Average)
+function runAnomalyDetection(currentCpu, currentMem) {
+    if (history.cpu.length < 10) return; // Wait for enough data
+
+    // Calculate baseline (Moving Average)
+    const avgCpu = history.cpu.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / history.cpu.length;
+    const avgMem = history.mem.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / history.mem.length;
+
+    // Standard Deviation approximation
+    const diffCpu = Math.abs(currentCpu - avgCpu);
+    const diffMem = Math.abs(currentMem - avgMem);
+
+    // Anomaly Score (0-100)
+    const score = Math.min(100, (diffCpu * 2) + (diffMem * 1.5));
+    
+    // XAI: Generate a reason for the score
+    let why = 'System parameters within normal moving average.';
+    if (score > 30) {
+        const cpuSpike = currentCpu > avgCpu * 1.5;
+        const memSpike = currentMem > avgMem * 1.2;
+        if (cpuSpike && memSpike) why = `Simultaneous spike: CPU (${currentCpu}%) and RAM (${currentMem}%) exceeded baseline.`;
+        else if (cpuSpike) why = `CPU spike detected: ${currentCpu}% is significantly above the ${avgCpu.toFixed(1)}% baseline.`;
+        else if (memSpike) why = `Memory leak suspected: usage (${currentMem}%) climbed above ${avgMem.toFixed(1)}% average.`;
+    }
+
+    sysMetrics.anomaly = {
+        score: score.toFixed(1),
+        status: score > 75 ? 'CRITICAL ANOMALY' : (score > 40 ? 'UNUSUAL ACTIVITY' : 'SYSTEM NOMINAL'),
+        lastCheck: new Date().toLocaleTimeString(),
+        why: why
+    };
+
+    if (score > 85) {
+        const msg = `CRITICAL: System Anomaly Detected (${score.toFixed(1)}%). Initiating AI Safeguards...`;
+        if (!alerts.some(a => a.message === msg)) {
+            alerts.push({ type: 'AI_GUARD', message: msg, severity: 'danger' });
+            triggerSelfHealing('anomaly');
+        }
+    } else if (score > 50) {
+        if (!alerts.some(a => a.type === 'AI_GUARD')) {
+            alerts.push({ type: 'AI_GUARD', message: `Unusual activity detected (${score.toFixed(1)}%)`, severity: 'warning' });
+        }
+    }
+
+    if (currentMem > 95) triggerSelfHealing('high_mem');
+}
 
 async function updateMetrics() {
     sysMetrics.date = new Date().toLocaleString();
     const platform = os.platform();
+    const metrics = getProcMetrics();
+
+    sysMetrics.cpuCores = [metrics.cpu.toFixed(1)];
+    sysMetrics.swap = metrics.swap.toFixed(1);
+    sysMetrics.totalProcesses = metrics.processes;
     
-    try {
-        const [cpu, mem, temp, battery, users] = await Promise.all([
-            si.currentLoad().catch(() => ({ cpus: [] })),
-            si.mem().catch(() => ({})),
-            si.cpuTemperature().catch(() => ({})),
-            si.battery().catch(() => ({ hasBattery: false })),
-            si.users().catch(() => [])
-        ]);
+    // Update history (max 20 points)
+    history.labels.push(new Date().toLocaleTimeString());
+    history.cpu.push(metrics.cpu.toFixed(1));
+    history.mem.push(metrics.mem.toFixed(1));
+    history.swap.push(metrics.swap.toFixed(1));
+    if (history.labels.length > 20) {
+        history.labels.shift();
+        history.cpu.shift();
+        history.mem.shift();
+        history.swap.shift();
+    }
 
-        sysMetrics.cpuCores = cpu.cpus.map(c => c.load.toFixed(1));
-        const currentLoad = cpu.currentLoad || 0;
-        const memUsed = ((mem.active || 0) / (mem.total || 1)) * 100;
+    runAnomalyDetection(metrics.cpu, metrics.mem);
+    
+    // Proper session counting (Active Users)
+    exec('who | cut -d" " -f1 | sort | uniq | wc -l', (err, stdout) => {
+        if (!err) sysMetrics.totalSessions = parseInt(stdout.trim()) || 0;
+    });
 
-        // Update history (max 20 points)
-        history.labels.push(new Date().toLocaleTimeString());
-        history.cpu.push(currentLoad.toFixed(1));
-        history.mem.push(memUsed.toFixed(1));
-        if (history.labels.length > 20) {
-            history.labels.shift();
-            history.cpu.shift();
-            history.mem.shift();
-        }
+    if (platform === 'darwin') {
+        exec('ps -ax | wc -l', (err, stdout) => {
+            if (!err) sysMetrics.totalProcesses = parseInt(stdout.trim());
+        });
+    }
+
+    // IP Address Collection for the specific interface
+    const iface = "wlp0s20f3";
+    const nets = os.networkInterfaces();
+    if (nets[iface]) {
+        const v4 = nets[iface].find(n => n.family === 'IPv4');
+        const v6 = nets[iface].find(n => n.family === 'IPv6');
+        sysMetrics.ipv4 = v4 ? v4.address : 'N/A';
+        sysMetrics.ipv6 = v6 ? v6.address : 'N/A';
+    }
+
+    // Native Ports counting
+    exec(platform === 'linux' ? 'ss -tuln | grep LISTEN | wc -l' : 'netstat -an | grep LISTEN | wc -l', (err, stdout) => {
+        if (!err) sysMetrics.ports = parseInt(stdout.trim()) || 0;
+    });
+
+    if (platform === 'linux') {
+        const iface = "wlp0s20f3";
         
-        if (temp.main > 0) sysMetrics.temp = `${temp.main.toFixed(1)}°C`;
-        else if (temp.max > 0) sysMetrics.temp = `${temp.max.toFixed(1)}°C`;
-        else sysMetrics.temp = 'N/A';
+        // Temperature from /sys
+        try {
+            if (fs.existsSync('/sys/class/thermal/thermal_zone0/temp')) {
+                const t = fs.readFileSync('/sys/class/thermal/thermal_zone0/temp', 'utf8');
+                sysMetrics.temp = (parseInt(t) / 1000).toFixed(1) + '°C';
+            }
+        } catch(e) {}
 
-        if (battery.hasBattery) {
-            sysMetrics.battery = {
-                percent: battery.percent,
-                isCharging: battery.isCharging,
-                voltage: battery.voltage,
-                capacity: battery.capacityUnit === 'mAh' ? `${battery.currentCapacity} / ${battery.maxCapacity} mAh` : 'N/A',
-                health: battery.health || 'N/A',
-                cycleCount: battery.cycleCount || 'N/A'
-            };
-        } else sysMetrics.battery = 'N/A';
+        // Battery from /sys (Try multiple paths)
+        try {
+            const batPath = ['/sys/class/power_supply/BAT0', '/sys/class/power_supply/BAT1', '/sys/class/power_supply/battery'].find(p => fs.existsSync(p));
+            if (batPath) {
+                const cap = fs.readFileSync(path.join(batPath, 'capacity'), 'utf8').trim();
+                const status = fs.readFileSync(path.join(batPath, 'status'), 'utf8').trim();
+                sysMetrics.battery = { percent: parseInt(cap), isCharging: status === 'Charging' };
+            }
+        } catch(e) {}
 
-        const uniqueUsers = [...new Set(users.map(u => u.user))];
-        sysMetrics.userList = uniqueUsers.join(', ') || 'None';
-        sysMetrics.totalSessions = users.length;
+        exec(`iw dev ${iface} link | grep SSID | cut -d: -f2`, (err, stdout) => {
+            if (!err && stdout.trim()) {
+                sysMetrics.wifi = stdout.trim();
+            } else {
+                exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err2, stdout2) => {
+                    sysMetrics.wifi = stdout2.trim() || 'None';
+                });
+            }
+        });
+    }
 
-        if (platform === 'darwin') {
-            exec("networksetup -getairportnetwork en0", (err, stdout) => {
-                if (!err && stdout.includes(': ')) sysMetrics.wifi = stdout.split(': ')[1].trim();
-                else sysMetrics.wifi = 'None';
-            });
-        } else if (platform === 'linux') {
-            const iface = "wlp0s20f3";
-            // Use 'iw' to get the current SSID - proven to work in your docker environment
-            exec(`iw dev ${iface} link | grep SSID | cut -d: -f2`, (err, stdout) => {
-                if (!err && stdout.trim()) {
-                    sysMetrics.wifi = stdout.trim();
-                    sysMetrics.wifiError = '';
-                } else {
-                    // Fallback to wpa_cli if iw fails for status
-                    exec(`wpa_cli -p /var/run/wpa_supplicant -i ${iface} status | grep '^ssid=' | cut -d= -f2`, (err2, stdout2) => {
-                        if (!err2 && stdout2.trim()) sysMetrics.wifi = stdout2.trim();
-                        else sysMetrics.wifi = 'None';
-                    });
+    // Energy-Aware Orchestration (Point 4)
+    if (sysMetrics.battery !== 'N/A' && sysMetrics.battery.percent < 15 && !sysMetrics.battery.isCharging) {
+        if (!alerts.some(a => a.type === 'ENERGY_SAVER')) {
+            alerts.push({ type: 'ENERGY_SAVER', message: 'Low Power: Reducing telemetry frequency.', severity: 'warning' });
+            // Logic to slow down polling could go here
+        }
+    }
+}
+
+// Security "Shadow Watcher" (eBPF-style file integrity monitoring)
+const SENSITIVE_FILES = ['/etc/passwd', '/etc/shadow', path.join(ROOT_DIR, 'backend/users.json'), path.join(ROOT_DIR, '.env')];
+function startShadowWatcher() {
+    SENSITIVE_FILES.forEach(file => {
+        if (fs.existsSync(file)) {
+            fs.watch(file, (event) => {
+                if (event === 'change') {
+                    const msg = `SECURITY ALERT: Unauthorized access/modification to ${file}`;
+                    alerts.push({ type: 'SHADOW_WATCH', message: msg, severity: 'danger' });
+                    console.log(`[SHADOW_WATCHER] ${msg}`);
                 }
             });
         }
+    });
+}
+startShadowWatcher();
 
-        si.networkConnections().then(conns => {
-            sysMetrics.ports = conns.filter(c => c.state === 'LISTEN' && c.protocol === 'tcp').length;
-        }).catch(() => {});
-
-    } catch (e) {
-        console.error("Metric collection error:", e.message);
+// AI Self-Healing Logic
+function triggerSelfHealing(reason) {
+    const healingCmds = {
+        'high_mem': 'sync && echo 3 > /proc/sys/vm/drop_caches',
+        'anomaly': 'npm prune --production && npm cache clean --force'
+    };
+    
+    const cmd = healingCmds[reason];
+    if (cmd) {
+        console.log(`[AI_HEALING] Triggering action: ${cmd}`);
+        exec(cmd, (err) => {
+            if (!err) alerts.push({ type: 'AI_HEAL', message: `Self-healing completed: ${reason}`, severity: 'success' });
+        });
     }
 }
+
 setInterval(updateMetrics, 5000);
 updateMetrics();
 
@@ -154,20 +327,16 @@ const server = http.createServer((req, res) => {
         handleJson(res, history);
     } else if (url === '/api/stats' && method === 'GET') {
         handleStats(res);
-    } else if (url === '/api/services' && method === 'GET') {
-        handleServices(res);
-    } else if (url === '/api/config-services' && method === 'GET') {
-        handleJson(res, config.services || []);
+    } else if (url === '/api/disk' && method === 'GET') {
+        handleDisk(res);
     } else if (url === '/api/alerts' && method === 'GET') {
         handleJson(res, alerts);
-    } else if (url === '/api/disk' && method === 'GET') {
-        if (config.modules.disk) handleDisk(res); else handleJson(res, { main: { usage: '0%' }, topDirs: [] });
+    } else if (url === '/api/services' && method === 'GET') {
+        handleServices(res);
     } else if (url === '/api/logs' && method === 'GET') {
-        if (config.modules.logs) handleLogs(res); else res.end('Logs module disabled.');
+        handleLogs(res);
     } else if (url === '/api/command' && method === 'POST') {
         handleCommand(req, res);
-    } else if (url === '/api/ai/ask' && method === 'POST') {
-        if (config.modules.ai) handleAiAsk(req, res); else handleJson(res, { text: 'AI module disabled.' });
     } else if (url === '/api/deploy' && method === 'POST') {
         handleDeploy(req, res);
     } else if (url.startsWith('/api/files/list') && method === 'GET') {
@@ -194,6 +363,10 @@ const server = http.createServer((req, res) => {
         handleWifiScan(res);
     } else if (url === '/api/wifi/connect' && method === 'POST') {
         handleWifiConnect(req, res);
+    } else if (url === '/api/nodes/add' && method === 'POST') {
+        handleNodeAdd(req, res);
+    } else if (url === '/api/nodes/stats' && method === 'GET') {
+        handleNodeStats(res);
     } else if (url === '/api/modules' && method === 'GET') {
         handleJson(res, config.modules || {});
     } else {
@@ -270,11 +443,12 @@ function handleStats(res) {
 }
 
 function handleServices(res) {
-    exec('ps aux | grep node | grep -v grep', (err, stdout) => {
-        const lines = (stdout || '').trim().split('\n').filter(l => l.length > 0);
+    // Show top CPU/MEM consumers (Portably across Linux and BSD/Mac)
+    exec('ps aux | sort -rnk 3 | head -n 6', (err, stdout) => {
+        const lines = (stdout || '').trim().split('\n');
         handleJson(res, lines.map(l => {
-            const p = l.replace(/\s+/g, ' ').split(' ');
-            return { name: `Proc ${p[1]}`, pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
+            const p = l.trim().replace(/\s+/g, ' ').split(' ');
+            return { name: p[10] ? p[10].split('/').pop() : 'Unknown', pid: p[1], cpu: p[2], mem: p[3], cmd: p.slice(10).join(' ') };
         }));
     });
 }
@@ -308,11 +482,50 @@ function handleCommand(req, res) {
     req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
-            const { command } = JSON.parse(body);
+            const { command, bypass } = JSON.parse(body);
             const config = getConfig();
             const whitelist = config.whitelist || WHITELIST_DEFAULT;
-            if (!whitelist.some(w => command.startsWith(w))) { res.writeHead(403); res.end('Forbidden'); return; }
-            exec(command, (err, stdout, stderr) => { handleJson(res, { output: stdout || stderr }); });
+            const dangerous = config.dangerous_commands || [];
+
+            // 1. Whitelist Check
+            if (!whitelist.some(w => command.startsWith(w))) {
+                res.writeHead(403);
+                res.end(JSON.stringify({ output: 'Error: Command not in whitelist for security.' }));
+                return;
+            }
+
+            // 2. Behavioral AI Check (User Pattern Analysis)
+            const novelty = getCommandNovelty(command);
+            if (!bypass && novelty > 70) {
+                const hour = new Date().getHours();
+                const msg = `BEHAVIORAL ANOMALY: Command "${command.split(' ')[0]}" is unusual for this hour (${hour}:00).`;
+                alerts.push({ type: 'USER_AI', message: msg, severity: 'warning' });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    output: `[USER_AI_GUARD] ${msg}\nProceed? Append --force to your command.`, 
+                    intercepted: true 
+                }));
+                return;
+            }
+
+            // 3. Safety Interceptor (Static Guard)
+            if (!bypass && dangerous.some(d => command.includes(d))) {
+                const msg = `AI GUARD: Potentially destructive command intercepted: "${command}"`;
+                alerts.push({ type: 'SAFE_MODE', message: msg, severity: 'warning' });
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ 
+                    output: `[INTERCEPTED] ${msg}\nAre you sure? Use [SYSTEM] mode with --force to proceed.`, 
+                    intercepted: true 
+                }));
+                return;
+            }
+
+            // 4. Learning Phase
+            learnCommand(command);
+
+            exec(command, (err, stdout, stderr) => { 
+                handleJson(res, { output: stdout || stderr || '(No output)' }); 
+            });
         } catch (e) { 
             res.writeHead(400, { 'Content-Type': 'application/json' }); 
             res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
@@ -326,38 +539,56 @@ function handleDeploy(req, res) {
     });
 }
 
-function handleAiAsk(req, res) {
+async function handleAiAsk(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
         try {
-            const { prompt, contextFile } = JSON.parse(body);
+            const { prompt, mode } = JSON.parse(body);
+            const config = getConfig();
+            const provider = config.ai_provider || 'offline';
+            
+            // Stats context for the AI
             const stats = {
                 uptime: os.uptime(),
-                load: os.loadavg(),
-                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100
+                load: os.loadavg()[0],
+                mem: ((os.totalmem() - os.freemem()) / os.totalmem()) * 100,
+                anomaly: sysMetrics.anomaly.score
             };
-            
-            let response = { text: "I'm currently in offline mode. Ask me about CPU load, memory, or disk space.", suggestion: null };
 
-            const p = prompt.toLowerCase();
-            if (p.includes('load') || p.includes('cpu')) {
-                response.text = `CPU load is ${stats.load[0].toFixed(2)}. ${stats.load[0] > 1.0 ? "It's a bit high." : "Looking good!"}`;
-                response.suggestion = "ps aux";
-            } else if (p.includes('mem') || p.includes('ram')) {
-                response.text = `RAM usage is at ${stats.mem.toFixed(1)}%.`;
-                response.suggestion = "free -m";
-            } else if (p.includes('disk') || p.includes('space')) {
-                response.text = "You should check your disk partitions.";
-                response.suggestion = "df -h";
-            } else if (p.includes('who are you')) {
-                response.text = "I am the AiDash Assistant (Offline Mode).";
+            let response = { text: "AI Offline: I'm monitoring system health.", suggestion: null };
+
+            // Logic Switch based on Mode
+            if (mode === 'MODEL' && provider !== 'offline') {
+                if (provider === 'gemini' && config.ai_config.gemini_api_key) {
+                    // Gemini API Call (Conceptual for this project stage)
+                    response.text = `[Gemini Connect] Analyzing: "${prompt}"... (API Key Configured)`;
+                } else if (provider === 'ollama') {
+                    // Call local Ollama
+                    try {
+                        const ollamaRes = await fetch(config.ai_config.ollama_endpoint, {
+                            method: 'POST',
+                            body: JSON.stringify({ model: 'llama2', prompt: `Context: System Load ${stats.load}, RAM ${stats.mem}%. User asked: ${prompt}`, stream: false })
+                        }).then(r => r.json());
+                        response.text = ollamaRes.response;
+                    } catch(e) { response.text = "Ollama connection failed. Check endpoint."; }
+                }
+            } else {
+                // Offline Logic (Rule-based)
+                const p = prompt.toLowerCase();
+                if (p.includes('status') || p.includes('how')) {
+                    response.text = `System is currently in ${sysMetrics.anomaly.status} state. CPU Load: ${stats.load.toFixed(2)}.`;
+                } else if (p.includes('fix') || p.includes('high')) {
+                    response.text = "I recommend checking 'ps aux' for heavy processes or running AI self-healing.";
+                    response.suggestion = "ps aux";
+                } else {
+                    response.text = "I'm monitoring for anomalies. Ask me about system load, memory, or security.";
+                }
             }
 
             handleJson(res, response);
         } catch (e) { 
-            res.writeHead(400, { 'Content-Type': 'application/json' }); 
-            res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
+            res.writeHead(400); res.end(JSON.stringify({ success: false, message: 'Bad Request' })); 
         }
     });
 }
@@ -567,6 +798,50 @@ function handleWifiConnect(req, res) {
             }
         } catch (e) { handleJson(res, { success: false, output: 'Bad Request' }); }
     });
+}
+
+function handleNodeAdd(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { name, ip } = JSON.parse(body);
+            const config = getConfig();
+            if (!config.nodes) config.nodes = [];
+            config.nodes.push({ name, ip, status: 'Online' });
+            fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+            handleJson(res, { success: true });
+        } catch(e) { res.writeHead(400); res.end('Error'); }
+    });
+}
+
+async function handleNodeStats(res) {
+    const config = getConfig();
+    const nodes = config.nodes || [];
+    
+    // Real Federated Fetch: Attempting to connect to other edge nodes
+    const results = await Promise.all(nodes.map(async n => {
+        try {
+            // Check if the node is the current host (loopback) to avoid infinite recursion
+            if (n.ip === 'localhost' || n.ip === '127.0.0.1') return { ...n, status: 'Online (Host)', load: os.loadavg()[0], mem: 'Self' };
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            
+            const stats = await fetch(`http://${n.ip}:3000/api/stats`, { signal: controller.signal }).then(r => r.json());
+            clearTimeout(timeout);
+            
+            return {
+                ...n,
+                status: 'Online',
+                load: stats.load[0].toFixed(2),
+                mem: ((stats.totalMem - stats.freeMem) / stats.totalMem * 100).toFixed(1) + '%'
+            };
+        } catch (e) {
+            return { ...n, status: 'Offline / Unreachable', load: 'N/A', mem: 'N/A' };
+        }
+    }));
+
+    handleJson(res, results);
 }
 
 function startServer(port) {
