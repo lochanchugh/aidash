@@ -1,0 +1,12 @@
+node_modules
+.git
+.DS_Store
+server.log
+docs
+scripts
+package-lock.json
+README.md
+GEMINI.md
+docker-compose.yml
+Dockerfile
+.gitignore

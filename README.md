@@ -1,56 +1,64 @@
-# AiDash | Extreme Server Dashboard
-"A lightweight, OS-like dashboard for headless Linux servers."
+# AIDASH | Autonomous Edge Management & AI Guardian
+"The high-performance, AI-native operating environment for headless edge servers."
 
-AiDash V2 is a high-performance system monitoring hub designed for servers with limited resources. It provides a real-time, interactive UI to manage hardware, files, and networking without a desktop environment.
+AIDASH (formerly AiDash V2) is a specialized B.Tech project focusing on **Resource-Optimized Intelligence** for servers with limited power and memory. It transforms a standard monitoring tool into an **Autonomous Guardian** capable of anomaly detection and self-healing.
+
+## 🎓 B.Tech Project Thesis: Core Innovations
+
+### 1. Hero Terminal V2 (AI-Native Interface)
+The terminal is no longer a "side tool"—it is the **Intelligence Hub**.
+- **Contextual Awareness**: Real-time analysis of typed commands against historical usage patterns.
+- **Unified Shell**: Direct system access with built-in Smart Safety Interceptor and AI-driven command learning.
+
+### 2. Edge Anomaly Engine (Predictive & Behavioral)
+Moving from *threshold-based alerts* to *intelligent pattern-based detection*.
+- **Local ML Inference**: A lightweight Moving Average model runs in the backend to "learn" your server's normal heartbeat.
+- **Behavioral Fingerprinting**: The AI learns your command history. If a whitelisted command is run at an unusual time (e.g., `cat` at 3 AM), the **User-Behavior Analytics (UBA)** flags it.
+- **Explainable AI (XAI)**: No "Black Box" metrics. The dashboard provides a human-readable **"Why?"** for every anomaly inline.
+- **Proactive Interception**: Intercepts dangerous system states before hardware failure or security breaches occur.
+
+### 4. Smart Safety Interceptor
+A proactive security layer that sits between the user and the shell.
+- **AI-Native Guard**: Intercepts high-risk commands (e.g., `rm -rf`, `mkfs`) based on a dynamically configurable danger list.
+- **Alert Integration**: Every interception is logged to the Hero Terminal and the Security Hub.
+- **Controlled Bypass**: Requires an explicit `--force` flag in `SYSTEM` mode, ensuring no accidental destructive actions.
+
+### 6. Federated Fleet Commander
+Designed for distributed edge clusters.
+- **Node Adoption**: Centralized dashboard to "adopt" other AiDash edge nodes.
+- **Unified Health View**: Real-time aggregated stats (Load, RAM, Status) for the entire fleet from a single interface.
+
+### 7. XAI Audit & Transparency
+Proving the AI isn't a "Black Box" for academic and professional review.
+- **Mathematical Transparency**: View the moving baseline, Euclidean variance, and UBA pattern recognition states.
+- **Audit Logs**: Human-readable explanations for every automated intervention.
 
 ## 🚀 Key Features
-- **Real-time Performance Metrics**: Rolling 20-point history charts for CPU and Memory.
-- **System Terminal (Ctrl+T / Cmd+T)**: Full interactive shell terminal for real-time command execution and diagnostic output.
-- **Headless WiFi Module**: Hardware-level scanning via `iw` and robust joining via `wpa_cli` (designed for server environments).
-- **Enhanced File Explorer**: 
-  - Full access to the host filesystem (`/host`) with built-in text editor.
-  - Create new files and folders directly from the UI.
-  - Real-time file size display and one-click file downloads.
-  - Safe file deletion and save capabilities.
-- **Advanced Battery Hub**: One-click toggle for deep battery analytics (Voltage, Cycle count, Health, and Capacity).
-- **Command Palette (Ctrl+K / Cmd+K)**: Instant access to 10+ whitelisted system tools (Disk usage, Process tree, Block devices, etc.).
-- **Security Hub**: Admin password management and network configuration in a dedicated modal.
-- **Service Monitoring**: Quick-links to other apps/ports hosted on your machine.
-- **Diagnostic AI**: Offline-mode assistant for system load analysis.
+- **Real-time Performance Metrics**: Zero-overhead CPU/Memory tracking via direct Kernel parsing.
+- **Hero Terminal**: Full interactive shell terminal integrated into the main dashboard for real-time command execution.
+- **Headless WiFi Module**: Hardware-level scanning via `iw` and robust joining via `wpa_cli`.
+- **Enhanced File Explorer**: Full access to the host filesystem (`/host`) with built-in text editor and fallback for local development.
+- **Advanced Battery Hub**: Deep battery analytics for edge devices with multi-path Linux support.
+- **Unified Process Tracker**: Single-view management of all active system processes with resource delta tracking.
 
-## 🛠 Docker Deployment (Recommended)
-The dashboard is optimized for Docker to handle complex hardware permissions automatically.
-
+## 🛠 Deployment (Optimized for Efficiency)
 1. **Clone and Setup**:
    ```bash
-   git clone https://github.com/lochanchugh/aidash.git
+   git clone -b aidash-ai-core https://github.com/lochanchugh/aidash.git
    cd aidash
    ```
-
-2. **Grant Hardware Permissions** (Crucial for WiFi):
-   ```bash
-   sudo chmod 777 /run/wpa_supplicant
-   ```
-
-3. **Start the Container**:
+2. **Start the Optimized Container**:
    ```bash
    docker-compose up -d --build
    ```
 
-## ⚙️ Technical Power
-To provide "Beyond-Docker" capabilities, the following configurations are used:
-- **`privileged: true`**: Allows access to the laptop's hardware.
-- **`network_mode: "host"`**: Ensures the dashboard sees the real Wi-Fi card.
-- **Socket Mounting**: Links `/run/wpa_supplicant` and `/var/run/dbus` for real-time network control.
-- **Host Mounting**: Mounts the server's root filesystem to `/host` for the File Explorer.
+## 📝 Technical Specs
+- **Backend**: Node.js 20 (Alpine)
+- **Frontend**: Vanilla JS (Zero-Framework for RAM efficiency)
+- **Metrics**: Direct Linux Kernel /proc parsing
+- **AI**: Edge-based Anomaly Engine
 
-## 🔒 Security
-- **Admin Authentication**: Required for all system actions.
-- **Password Hashing**: SHA-256 protection for credentials.
-- **Command Whitelisting**: Prevents arbitrary shell execution.
-- **Host Isolation**: File access is restricted to the `/host` mount path.
-
-## 📝 Configuration
-- `backend/users.json`: Manage admin credentials.
-- `config/default.json`: Customize modules and whitelisted commands.
-- `backend/server.js`: Defaulted to `wlp0s20f3` Wi-Fi interface.
+### 📊 Current Performance Status
+- **RAM Idle**: ~18.9 MiB (Goal: <15 MiB)
+- **Docker Image**: 155 MB (Goal: <30 MiB)
+- **Total Footprint**: ~159.7 MB
