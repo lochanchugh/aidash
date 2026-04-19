@@ -59,6 +59,7 @@ let sysMetrics = {
     userList: 'None', 
     totalSessions: 0, 
     totalProcesses: 0,
+    mem: 0,
     swap: 0,
     ipv4: 'N/A',
     ipv6: 'N/A',
@@ -118,29 +119,55 @@ function getProcMetrics() {
     return metrics;
 }
 
-// Proper AI: Edge Anomaly Detection (Linear Weighted Moving Average)
+// Proper AI: Edge Anomaly Detection (Linear Weighted Moving Average + Z-Score XAI)
 function runAnomalyDetection(currentCpu, currentMem) {
     if (history.cpu.length < 10) return; // Wait for enough data
 
-    // Calculate baseline (Moving Average)
-    const avgCpu = history.cpu.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / history.cpu.length;
-    const avgMem = history.mem.reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / history.mem.length;
-
-    // Standard Deviation approximation
-    const diffCpu = Math.abs(currentCpu - avgCpu);
-    const diffMem = Math.abs(currentMem - avgMem);
-
-    // Anomaly Score (0-100)
-    const score = Math.min(100, (diffCpu * 2) + (diffMem * 1.5));
+    // 1. Calculate LWMA (Linear Weighted Moving Average)
+    // Most recent data points get higher weight
+    let cpuWsum = 0, memWsum = 0, weightTotal = 0;
     
-    // XAI: Generate a reason for the score
-    let why = 'System parameters within normal moving average.';
+    for (let i = 0; i < history.cpu.length; i++) {
+        const weight = i + 1; // Linear weight: 1, 2, 3...
+        cpuWsum += parseFloat(history.cpu[i]) * weight;
+        memWsum += parseFloat(history.mem[i]) * weight;
+        weightTotal += weight;
+    }
+    
+    const lwmaCpu = cpuWsum / weightTotal;
+    const lwmaMem = memWsum / weightTotal;
+
+    // 2. Calculate Standard Deviation (Sigma) for Z-Score
+    const getStdDev = (data, avg) => {
+        const squareDiffs = data.map(v => Math.pow(parseFloat(v) - avg, 2));
+        return Math.sqrt(squareDiffs.reduce((a, b) => a + b, 0) / data.length);
+    };
+
+    const stdCpu = getStdDev(history.cpu, lwmaCpu) || 0.5; // Avoid div by zero
+    const stdMem = getStdDev(history.mem, lwmaMem) || 0.5;
+
+    // 3. Calculate Z-Scores
+    const zCpu = Math.abs(currentCpu - lwmaCpu) / stdCpu;
+    const zMem = Math.abs(currentMem - lwmaMem) / stdMem;
+
+    // 4. Anomaly Score (weighted Z-Scores mapped to 0-100)
+    // Z-Score > 3 is a traditional statistical outlier
+    const score = Math.min(100, (zCpu * 15) + (zMem * 10));
+    
+    // 5. XAI: Z-Score based reasoning
+    let why = 'System parameters within normal statistical variance.';
+    const maxZ = Math.max(zCpu, zMem).toFixed(2);
+    
     if (score > 30) {
-        const cpuSpike = currentCpu > avgCpu * 1.5;
-        const memSpike = currentMem > avgMem * 1.2;
-        if (cpuSpike && memSpike) why = `Simultaneous spike: CPU (${currentCpu}%) and RAM (${currentMem}%) exceeded baseline.`;
-        else if (cpuSpike) why = `CPU spike detected: ${currentCpu}% is significantly above the ${avgCpu.toFixed(1)}% baseline.`;
-        else if (memSpike) why = `Memory leak suspected: usage (${currentMem}%) climbed above ${avgMem.toFixed(1)}% average.`;
+        if (zCpu > 3 && zMem > 3) {
+            why = `Critical deviation: CPU & RAM both exceeded 3-sigma (Z:${maxZ}). Simultaneous load anomaly detected.`;
+        } else if (zCpu > 2.5) {
+            why = `CPU Z-Score: ${zCpu.toFixed(2)}. Current usage ${currentCpu}% is a statistically significant outlier (${zCpu.toFixed(1)}σ).`;
+        } else if (zMem > 2.5) {
+            why = `Memory Z-Score: ${zMem.toFixed(2)}. Usage trend suggests an atypical RAM expansion beyond normal variance.`;
+        } else {
+            why = `Detected minor variance (Z:${maxZ}). System is fluctuating slightly above baseline.`;
+        }
     }
 
     sysMetrics.anomaly = {
@@ -171,6 +198,7 @@ async function updateMetrics() {
     const metrics = getProcMetrics();
 
     sysMetrics.cpuCores = [metrics.cpu.toFixed(1)];
+    sysMetrics.mem = metrics.mem.toFixed(1);
     sysMetrics.swap = metrics.swap.toFixed(1);
     sysMetrics.totalProcesses = metrics.processes;
     
@@ -189,8 +217,12 @@ async function updateMetrics() {
     runAnomalyDetection(metrics.cpu, metrics.mem);
     
     // Proper session counting (Active Users)
-    exec('who | cut -d" " -f1 | sort | uniq | wc -l', (err, stdout) => {
-        if (!err) sysMetrics.totalSessions = parseInt(stdout.trim()) || 0;
+    exec('who | cut -d" " -f1 | sort | uniq', (err, stdout) => {
+        if (!err) {
+            const users = stdout.trim().split('\n').filter(u => u);
+            sysMetrics.totalSessions = users.length;
+            sysMetrics.userList = users.join(', ') || 'None';
+        }
     });
 
     if (platform === 'darwin') {

@@ -30,8 +30,8 @@
 - [x] Multi-Stage Alpine Docker Transformation
 - [x] Direct Kernel `/proc` Metric Collection
 - [x] Hero Terminal V2 Integration
-- [x] **[IN PROGRESS]** LWMA Anomaly Detection Refinement
-- [x] **[IN PROGRESS]** XAI Z-Score Reasoning Layer
+- [x] LWMA Anomaly Detection Refinement
+- [x] XAI Z-Score Reasoning Layer
 - [x] Behavioral Command Pattern Recognition
 - [x] Federated Fleet Management (Multi-node adoption)
 - [x] Safety Interceptor & Controlled Bypass

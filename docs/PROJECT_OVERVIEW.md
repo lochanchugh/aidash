@@ -23,8 +23,8 @@
 ## 2. AI & Security Innovations
 - **Terminal Integration**: Web-based shell with real-time command filtering and safety interception.
 - **Edge Anomaly Engine**: 
-    - **Current Refinement**: Implementing Linear Weighted Moving Averages (LWMA) to prioritize recent system telemetry.
-    - **XAI Reasoning**: Utilizing Z-Score (Standard Deviation) mapping to provide human-readable diagnostic reasons.
+    - **Optimization**: Implemented Linear Weighted Moving Averages (LWMA) to prioritize recent telemetry for real-time responsiveness.
+    - **XAI Reasoning**: Utilizing Z-Score (Standard Deviation) mapping to provide human-readable diagnostic reasons (σ-variance).
 - **Behavioral Analysis**: Identifying command usage patterns and temporal load anomalies.
 - **Security Shadow Watcher**: Real-time file integrity monitoring for sensitive paths (`/etc/passwd`, `.env`).
 - **Safety Interceptor**: Filtering destructive terminal commands with a user-facing warning and bypass mechanism.
