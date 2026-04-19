@@ -6,8 +6,8 @@
 - **B.Tech Thesis Goal**: Distributed, Autonomous Resource Management & Explainable Security AI.
 - **Key Metrics**:
     - **RAM Usage**: Target <15MB | **Current ~18.9MB**
-    - **Image Size**: Target <30MB | **Current ~155MB**
-    - **Source Footprint**: ~4.7MB (including logs)
+    - **Image Size**: Target <30MB | **Current ~78MB** (Optimizing)
+    - **Source Footprint**: ~5.0MB (including logs)
 
 ## Technical Foundation (Optimized for Thesis)
 - **Zero-Dependency Metrics**: Direct Linux Kernel `/proc` parsing for CPU delta and Memory (replacing heavy `systeminformation` library).
@@ -16,7 +16,7 @@
 
 ## AI & Security Innovations
 - **Hero Terminal V2**: Intelligence-first unified shell terminal with automated AI safety interception.
-- **Edge Anomaly Engine (ML)**: Moving Average and Euclidean variance-based anomaly detection running locally on the edge.
+- **Edge Anomaly Engine**: Moving Average and Euclidean variance-based anomaly detection running locally on the edge.
 - **Behavioral Fingerprinting (UBA)**: Pattern recognition for command history and temporal load analysis.
 - **Explainable AI (XAI)**: Human-readable "Why?" inline reasonings for every system intervention.
 - **Smart Safety Interceptor**: Context-aware command interception (e.g., `rm -rf`) with controlled bypass.
@@ -27,16 +27,16 @@
 ## Current Progress & Status
 - [x] Initial Project Structure & Git Workflow
 - [x] Secure Authentication (SHA-256)
-- [x] **[NEW]** Multi-Stage Alpine Docker Transformation
-- [x] **[NEW]** Direct Kernel `/proc` Metric Collection
-- [x] **[NEW]** Hero Terminal V2 Integration
-- [x] **[NEW]** ML-based Anomaly Detection Engine
-- [x] **[NEW]** Behavioral Command Pattern Recognition
-- [x] **[NEW]** Explainable AI (XAI) Reasoning Layer
-- [x] **[NEW]** Federated Fleet Management (Multi-node adoption)
-- [x] **[NEW]** Safety Interceptor & Controlled Bypass
-- [x] **[NEW]** Security Shadow Watcher (File Integrity)
-- [x] **[NEW]** Autonomous AI Self-Healing Actions
+- [x] Multi-Stage Alpine Docker Transformation
+- [x] Direct Kernel `/proc` Metric Collection
+- [x] Hero Terminal V2 Integration
+- [x] **[IN PROGRESS]** LWMA Anomaly Detection Refinement
+- [x] **[IN PROGRESS]** XAI Z-Score Reasoning Layer
+- [x] Behavioral Command Pattern Recognition
+- [x] Federated Fleet Management (Multi-node adoption)
+- [x] Safety Interceptor & Controlled Bypass
+- [x] Security Shadow Watcher (File Integrity)
+- [x] Autonomous AI Self-Healing Actions
 - [x] Full Interactive File Explorer (Host access via `/host`)
 - [x] Headless WiFi Module (Hardware-level `iw` / `wpa_cli`)
 - [x] Advanced Battery Hub & Energy-Aware Orchestration
