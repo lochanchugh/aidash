@@ -8,7 +8,7 @@
 ## Current Performance Metrics (Live)
 | Resource | Current Status | Thesis Target |
 | :--- | :--- | :--- |
-| **RAM (Memory)** | 21.33 MiB | < 15 MiB |
+| **RAM (Memory)** | 18.9 MiB | < 15 MiB |
 | **ROM (Image Size)** | 78.4 MB | < 30 MiB |
 | **Source Footprint** | 5.0 MB | ~ 4.7 MB |
 
@@ -18,16 +18,16 @@
 - **Zero-Dependency Engine**: Built using native Node.js `http`, `fs`, and `crypto` modules. No heavy frameworks (Express/React).
 - **Direct Kernel Metrics**: Real-time parsing of Linux `/proc` (`stat`, `meminfo`, `net/dev`) for ultra-low overhead.
 - **Multi-Stage Deployment**: Optimized for Alpine Linux to minimize binary bloat and ROM footprint.
-- **OS-Mimic UI**: A high-performance, glassmorphic dashboard mimicking a desktop environment.
+- **Unified Interface**: A high-performance, OS-mimic dashboard providing centralized control.
 
 ## 2. AI & Security Innovations
-- **Hero Terminal V2**: Intelligence-first shell with real-time command interception.
-- **Edge Anomaly Engine (XAI)**:
-    - **Logic**: Linear Weighted Moving Averages (LWMA) and Euclidean Variance.
-    - **XAI Reasoning**: Human-readable "Why?" explanations for every system intervention.
-- **Behavioral Fingerprinting (UBA)**: Pattern recognition for command history and temporal load analysis.
+- **Terminal Integration**: Web-based shell with real-time command filtering and safety interception.
+- **Edge Anomaly Engine**: 
+    - **Current Refinement**: Implementing Linear Weighted Moving Averages (LWMA) to prioritize recent system telemetry.
+    - **XAI Reasoning**: Utilizing Z-Score (Standard Deviation) mapping to provide human-readable diagnostic reasons.
+- **Behavioral Analysis**: Identifying command usage patterns and temporal load anomalies.
 - **Security Shadow Watcher**: Real-time file integrity monitoring for sensitive paths (`/etc/passwd`, `.env`).
-- **Smart Safety Interceptor**: Context-aware command interception with controlled `--force` bypass.
+- **Safety Interceptor**: Filtering destructive terminal commands with a user-facing warning and bypass mechanism.
 
 ## 3. Autonomous Management
 - **Self-Healing Engine**: Automated triggers for `drop_caches` and `npm prune` based on anomaly confidence.

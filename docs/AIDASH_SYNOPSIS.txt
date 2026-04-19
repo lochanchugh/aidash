@@ -1,0 +1,78 @@
+PROJECT SYNOPSIS
+AIDASH | AI-Native Autonomous Edge Operating Environment
+
+[Placeholders for Submission]
+Submitted to: ____________________
+Submitted by: ____________________
+
+OBJECTIVE
+The primary objective of AIDASH is to design and implement a unified, AI-native dashboard that serves as a high-performance operating environment for headless edge servers. The project seeks:
+• To centralize edge management by building a visually rich, OS-like dashboard that integrates monitoring, security, and control into a single interface.
+• To develop an Edge Anomaly Engine (LWMA-based) that feeds real-time health data directly into the dashboard's analytics layer.
+• To construct an Explainable AI (XAI) framework that provides human-readable reasoning for every automated dashboard intervention.
+• To integrate the Hero Terminal V2 as a core dashboard component, bridging the gap between raw shell access and AI-assisted diagnostics.
+• To implement autonomous self-healing mechanisms triggered by the dashboard’s background monitoring engine to reduce manual intervention.
+• To ensure operational safety through a Smart Safety Interceptor that monitors dashboard-initiated commands in real-time.
+• To maintain a zero-dependency, lightweight footprint (<20MB RAM) to ensure dashboard responsiveness on resource-constrained hardware.
+
+MODIFICATION AND IMPROVEMENT OVER THE EXISTING IMPLEMENTATION
+
+Present State (Disjointed Tools):
+• Traditional server monitoring relies on fragmented tools (Nagios, Prometheus) that lack a unified management interface.
+• Most anomaly detection systems are "black-box" models with no built-in explanation or integration with the management console.
+• Existing solutions depend on heavy external libraries and cloud-based analytics, increasing latency and footprint.
+• Terminal environments are typically passive and isolated, lacking context-aware intelligence from the system's real-time state.
+
+After Implementation (Unified Dashboard Environment):
+• Unified OS Experience: AIDASH merges monitoring, file exploration, WiFi management, and terminal access into a single, polished dashboard with an OS-like aesthetic.
+• Proactive Diagnostics: The integrated Explainable AI layer transforms system alerts from reactive notifications into insightful, dashboard-driven diagnostics.
+• Integrated Security: A Smart Safety Interceptor enforces whitelisting and behavioral guards directly within the dashboard's command interface.
+• Autonomous Orchestration: The dashboard actively mitigates detected issues (cache pruning, service restarts) without requiring external intervention.
+
+SCOPE OF PROJECT
+The project encompasses the development of a next-generation intelligent environment including:
+• Live Metrics Dashboard: Continuous visualization of CPU/RAM deltas via direct kernel-level /proc parsing.
+• AI-Based Anomaly Detection: A background scoring system that categorizes system behavior into normal, unusual, and critical states.
+• Explainable Diagnostics: Generation of contextual insights comparing real-time metrics with historical baselines.
+• Multi-Mode Intelligent Terminal: Integrated SYSTEM, AI_EDGE, and MODEL modes for unified command execution.
+• Command Intelligence Layer: A dashboard-based command palette for rapid execution of pre-approved operations.
+• Security Enforcement: Real-time detection of dangerous commands and whitelisting-based interception.
+• Security Shadow Watcher: Real-time integrity monitoring for sensitive system files (/etc/passwd, .env).
+• Autonomous Self-Healing: Automated execution of recovery commands based on dashboard-detected anomalies.
+• Federated Node Management: Capability to monitor and orchestrate multiple AIDASH nodes from a centralized dashboard.
+• Hardware-Level Integration: Dashboard modules for headless WiFi management and energy-aware battery orchestration.
+
+SIGNIFICANCE OF PROJECT
+The significance of the project lies in its ability to redefine edge system management:
+• It introduces the concept of an AI-native operating environment where intelligence is embedded at the core dashboard level.
+• It bridges the gap between automated systems and human understanding via real-time explainability.
+• The autonomous self-healing capability minimizes downtime for remote or unattended edge deployments.
+• The security-first architecture prevents harmful interactions by monitoring both user commands and critical system files.
+• Its lightweight design ensures high efficiency on resource-constrained devices without sacrificing visual or technical depth.
+
+TOOLS AND TECHNOLOGY USED
+Hardware Components:
+• Edge Servers / Linux-based Systems, CPU & Memory Resources, Network Interfaces.
+
+Software Technologies:
+• Node.js (Core), LWMA Machine Learning Models, Linux Kernel Interfaces (/proc/stat, /proc/meminfo), Ollama/Gemini AI, HTML5/CSS3 (Dashboard UI), Chart.js.
+
+REFERENCES
+[1] Linux Kernel Documentation. "The /proc Filesystem." kernel.org (Initially 1999, Updated 2024).
+    Link: https://www.kernel.org/doc/html/latest/filesystems/proc.html
+
+[2] Gummadi, N. A., Napier, J. C., & Abdallah, M. "XAI-IoT: An Explainable AI Framework for Enhancing Anomaly Detection in IoT Systems." IEEE Access, vol. 12 (2024).
+    Link: https://ieeexplore.ieee.org/document/10534036
+
+[3] "LightESD: Fully-Automated and Lightweight Anomaly Detection Framework for Edge Computing." arXiv:2305.12266 (2023).
+    Link: https://arxiv.org/abs/2305.12266
+
+[4] Goudarzi, S., Anisi, M. H., & Soleimani, A. "Proactive Self-Healing Approaches in Mobile Edge Computing: A Systematic Literature Review." MDPI Computers, 12(3), 63 (2023).
+    Link: https://www.mdpi.com/2073-431X/12/3/63
+
+[5] "Self-Healing Network of Interconnected Edge Devices Empowered by Infrastructure-as-Code and LoRa Communication." arXiv:2508.16268 (2025).
+    Link: https://arxiv.org/abs/2508.16268
+
+[6] Node.js Foundation. "Node.js v20.x Documentation - Performance Hooks & Core Modules." nodejs.org (2024).
+    Link: https://nodejs.org/docs/latest-v20.x/api/
+
