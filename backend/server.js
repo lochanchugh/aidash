@@ -73,10 +73,11 @@ let sysMetrics = {
 };
 
 // Historical data for graphs and AI
-let history = { cpu: [], mem: [], swap: [], labels: [] };
+let history = { cpu: [], mem: [], swap: [], disk: [], processes: [], labels: [] };
 let baseline = { cpu: 0, mem: 0, count: 0 };
 
 let lastCpuSum = 0, lastCpuIdle = 0;
+let currentDiskUsage = 0;
 
 function getProcMetrics() {
     const metrics = { cpu: 0, mem: 0, swap: 0, processes: 0 };
@@ -207,12 +208,22 @@ async function updateMetrics() {
     history.cpu.push(metrics.cpu.toFixed(1));
     history.mem.push(metrics.mem.toFixed(1));
     history.swap.push(metrics.swap.toFixed(1));
+    history.processes.push(metrics.processes);
+    history.disk.push(currentDiskUsage);
+
     if (history.labels.length > 20) {
         history.labels.shift();
         history.cpu.shift();
         history.mem.shift();
         history.swap.shift();
+        history.processes.shift();
+        history.disk.shift();
     }
+    
+    // Update disk usage in background for next tick
+    exec(platform === 'linux' ? "df / | tail -1 | awk '{print $5}' | sed 's/%//'" : "df -h / | tail -1 | awk '{print $5}' | sed 's/%//'", (err, stdout) => {
+        if (!err) currentDiskUsage = parseInt(stdout.trim()) || 0;
+    });
 
     runAnomalyDetection(metrics.cpu, metrics.mem);
     
@@ -304,22 +315,33 @@ function startShadowWatcher() {
 }
 startShadowWatcher();
 
-// AI Self-Healing Logic
+// AI Self-Healing Logic with Cooldown
+const healingCooldowns = {};
+
 function triggerSelfHealing(reason) {
+    const now = Date.now();
+    // 60 second cooldown per reason to prevent spamming
+    if (healingCooldowns[reason] && (now - healingCooldowns[reason] < 60000)) return;
+
     const healingCmds = {
         'high_mem': 'sync && echo 3 > /proc/sys/vm/drop_caches',
         'anomaly': 'npm prune --production && npm cache clean --force'
     };
-    
+
     const cmd = healingCmds[reason];
     if (cmd) {
-        console.log(`[AI_HEALING] Triggering action: ${cmd}`);
+        healingCooldowns[reason] = now;
+        console.log(`[AI_HEALING] Triggering action: ${cmd} (Reason: ${reason})`);
         exec(cmd, (err) => {
-            if (!err) alerts.push({ type: 'AI_HEAL', message: `Self-healing completed: ${reason}`, severity: 'success' });
+            if (!err) {
+                const msg = `Self-healing sequence successful: ${reason.replace('_', ' ')}`;
+                if (!alerts.some(a => a.message === msg)) {
+                    alerts.push({ type: 'AI_HEAL', message: msg, severity: 'success' });
+                }
+            }
         });
     }
 }
-
 setInterval(updateMetrics, 5000);
 updateMetrics();
 
@@ -879,6 +901,7 @@ async function handleNodeStats(res) {
 function startServer(port) {
     server.listen(port, () => {
         console.log(`AiDash running on port ${port}`);
+        updateMetrics(); // Initial data collection
     }).on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
             console.log(`Port ${port} is busy, trying ${port + 1}...`);
