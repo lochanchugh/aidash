@@ -3,766 +3,1579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AiDash | Extreme Dashboard</title>
+    <title>AIDASH</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #030303;
-            --card-bg: rgba(15, 15, 20, 0.8);
-            --card-border: rgba(255, 255, 255, 0.05);
-            --text-main: #fcfcfc;
-            --text-dim: #71717a;
-            --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.2);
-            --success: #10b981;
-            --danger: #f43f5e;
-            --warning: #f59e0b;
-            --accent: #8b5cf6;
+            --bg:        #0d0d0d;
+            --surface:   #131313;
+            --surface2:  #1a1a1a;
+            --border:    #252525;
+            --border2:   #303030;
+            --text:      #d4d4d4;
+            --muted:     #555;
+            --dim:       #3a3a3a;
+
+            --green:     #4ade80;
+            --green-dim: rgba(74, 222, 128, 0.08);
+            --amber:     #fbbf24;
+            --amber-dim: rgba(251, 191, 36, 0.08);
+            --red:       #f87171;
+            --red-dim:   rgba(248, 113, 113, 0.08);
+            --blue:      #60a5fa;
+            --blue-dim:  rgba(96, 165, 250, 0.08);
+            --teal:      #2dd4bf;
+
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
         }
 
-        * { box-sizing: border-box; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        body { 
-            font-family: 'Inter', -apple-system, sans-serif; 
-            background: var(--bg); color: var(--text-main); 
-            margin: 0; padding: 0; min-height: 100vh;
-            background-image: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 13px;
+            line-height: 1.5;
         }
 
-        /* OS UI Elements */
-        .system-bar {
-            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--card-border);
-            height: 36px; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 16px; position: sticky; top: 0; z-index: 1000;
-            font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+        /* ─── SCROLLBAR ─── */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+        /* ─── TOPBAR ─── */
+        #topbar {
+            display: none;
+            height: 38px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+            font-family: var(--mono);
+            font-size: 11px;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 20px; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; color: var(--muted); }
+        .topbar-logo {
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.15em;
+            color: var(--text);
+        }
+        .topbar-stat { color: var(--muted); }
+        .topbar-stat span { color: var(--text); }
+
+        /* ─── LAYOUT ─── */
+        #main-dashboard { display: none; }
+        .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 38px); }
+
+        /* ─── SIDEBAR ─── */
+        .sidebar {
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            font-family: var(--mono);
+            font-size: 11px;
+            position: sticky;
+            top: 38px;
+            height: calc(100vh - 38px);
+            overflow-y: auto;
+        }
+        .sidebar-section { padding: 20px 16px 12px; border-bottom: 1px solid var(--border); }
+        .sidebar-label {
+            font-size: 9px;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        .sidebar-host {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: 0.05em;
+        }
+        .sidebar-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 16px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 11px;
+            border-left: 2px solid transparent;
+            transition: all 0.1s;
+        }
+        .nav-item:hover { color: var(--text); background: var(--surface2); }
+        .nav-item.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
+        .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+        .sidebar-metrics { padding: 16px; border-bottom: 1px solid var(--border); display: grid; gap: 10px; }
+        .mini-metric { display: flex; flex-direction: column; gap: 4px; }
+        .mini-metric-header { display: flex; justify-content: space-between; align-items: center; }
+        .mini-metric-name { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
+        .mini-metric-val { font-size: 12px; font-weight: 600; color: var(--text); }
+        .mini-bar { height: 2px; background: var(--dim); border-radius: 1px; overflow: hidden; }
+        .mini-bar-fill { height: 100%; background: var(--green); border-radius: 1px; transition: width 0.4s ease; }
+
+        .sidebar-anomaly { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .sidebar-anomaly:hover { background: var(--surface2); }
+        .anomaly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .anomaly-label { font-size: 9px; letter-spacing: 0.12em; color: var(--muted); }
+        .anomaly-score { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+        .anomaly-bar { height: 3px; background: var(--dim); border-radius: 1px; overflow: hidden; margin-bottom: 6px; }
+        .anomaly-bar-fill { height: 100%; background: var(--green); border-radius: 1px; transition: width 0.4s, background 0.4s; }
+        .anomaly-status { font-size: 9px; font-weight: 600; letter-spacing: 0.08em; }
+        .anomaly-why { font-size: 9px; color: var(--muted); margin-top: 4px; line-height: 1.4; font-style: italic; }
+
+        .sidebar-footer { margin-top: auto; padding: 12px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+        .sidebar-btn {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .sidebar-btn:hover { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+        .sidebar-btn.danger:hover { color: var(--red); border-color: var(--red); }
+
+        /* ─── MAIN CONTENT ─── */
+        .content { padding: 0; overflow: hidden; }
+
+        /* ─── METRIC CARDS ─── */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            border-bottom: 1px solid var(--border);
+        }
+        .metric-card {
+            padding: 20px 22px;
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.1s;
+            overflow: hidden;
+        }
+        .metric-card:last-child { border-right: none; }
+        .metric-card:hover { background: var(--surface); }
+        .metric-card.active { background: var(--surface); }
+        .metric-card.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 2px;
+            background: var(--green);
+        }
+        .metric-card-label {
+            font-size: 9px;
+            font-family: var(--mono);
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .metric-card-label::before {
+            content: '';
+            width: 3px; height: 3px;
+            border-radius: 50%;
+            background: var(--muted);
+        }
+        .metric-card.active .metric-card-label::before { background: var(--green); }
+        .metric-card-val {
+            font-size: 28px;
+            font-weight: 600;
+            font-family: var(--mono);
+            letter-spacing: -0.02em;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+        .metric-card-sub { font-size: 10px; color: var(--muted); font-family: var(--mono); margin-bottom: 10px; }
+        .metric-bar { height: 2px; background: var(--dim); border-radius: 1px; overflow: hidden; }
+        .metric-bar-fill { height: 100%; border-radius: 1px; transition: width 0.4s ease; }
+        .metric-card-hint {
+            position: absolute;
+            top: 16px; right: 14px;
+            font-size: 9px;
+            color: var(--dim);
+            font-family: var(--mono);
+            letter-spacing: 0.05em;
+        }
+        .metric-card:hover .metric-card-hint { color: var(--muted); }
+
+        /* ─── CHART PANEL ─── */
+        .chart-panel {
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            padding: 0;
+        }
+        .chart-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-panel-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .live-dot {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: blink 2s ease infinite;
+        }
+        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        .chart-panel-actions { display: flex; gap: 8px; }
+        .chip-btn {
+            padding: 3px 9px;
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 0.08em;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 2px;
+            transition: all 0.1s;
+        }
+        .chip-btn:hover, .chip-btn.active { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+        .chart-body { padding: 16px 20px 20px; height: 200px; position: relative; }
+
+        /* ─── BOTTOM PANELS ─── */
+        .panels-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .panel { border-right: 1px solid var(--border); }
+        .panel:last-child { border-right: none; }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+        .panel-title {
+            font-family: var(--mono);
+            font-size: 9px;
+            letter-spacing: 0.15em;
+            color: var(--muted);
+            text-transform: uppercase;
         }
 
-        .container { max-width: 1440px; margin: auto; padding: 24px; }
-        .glass-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px; backdrop-filter: blur(12px); position: relative; overflow: hidden; }
-        
-        h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
-        h3::before { content: ''; width: 4px; height: 12px; background: var(--primary); border-radius: 2px; }
-
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 16px; }
-        
-        /* Stats Styling */
-        .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
-        .stat-card { padding: 18px; border-radius: 12px; border: 1px solid var(--card-border); background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0)); }
-        .stat-val { font-size: 32px; font-weight: 900; letter-spacing: -0.04em; }
-        .stat-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
-
-        /* Module Components */
-        button { 
-            background: var(--primary); color: white; border: none; padding: 10px 16px; 
-            border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 12px;
-            display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px var(--primary-glow);
+        /* ─── TERMINAL ─── */
+        .terminal-body {
+            height: 300px;
+            background: #080808;
+            overflow-y: auto;
+            padding: 12px 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+            line-height: 1.7;
         }
-        button:hover { filter: brightness(1.2); transform: translateY(-1px); }
-        button.secondary { background: rgba(255,255,255,0.04); color: var(--text-main); border: 1px solid var(--card-border); box-shadow: none; }
-        
-        input, select { background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); color: white; padding: 10px 14px; border-radius: 8px; font-size: 13px; outline: none; }
-        input:focus { border-color: var(--primary); }
+        .term-line { display: flex; gap: 6px; }
+        .term-prompt-char { color: var(--green); flex-shrink: 0; }
+        .term-cmd { color: var(--text); }
+        .term-out { color: #888; white-space: pre-wrap; word-break: break-all; }
+        .term-alert-danger { color: var(--red); }
+        .term-alert-warning { color: var(--amber); }
+        .term-alert-info { color: var(--blue); }
+        .terminal-input-row {
+            display: flex;
+            align-items: center;
+            background: #080808;
+            border-top: 1px solid var(--border);
+            padding: 0 16px;
+            gap: 8px;
+        }
+        .term-input-prompt { color: var(--green); font-family: var(--mono); font-size: 13px; font-weight: 600; flex-shrink: 0; }
+        .term-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 12px;
+            padding: 10px 0;
+            outline: none;
+        }
+        .term-input::placeholder { color: var(--dim); }
+        .term-spinner {
+            width: 10px; height: 10px;
+            border: 1px solid var(--border2);
+            border-top-color: var(--green);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        .logs-pre { background: #000; color: #10b981; font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 16px; border-radius: 10px; height: 300px; overflow-y: auto; white-space: pre-wrap; border: 1px solid var(--card-border); }
-        
-        /* File Explorer */
-        .file-list { height: 350px; overflow-y: auto; }
-        .file-item { padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; }
-        .file-item:hover { background: rgba(255,255,255,0.05); }
+        /* ─── PROCESS TABLE ─── */
+        .proc-body { height: 300px; overflow-y: auto; }
+        .proc-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+        .proc-table th {
+            padding: 0 16px 8px;
+            text-align: left;
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            font-weight: 400;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+        }
+        .proc-table td { padding: 7px 16px; border-bottom: 1px solid var(--border); }
+        .proc-table tr:hover td { background: var(--surface2); }
+        .proc-name { color: var(--text); font-weight: 500; }
+        .proc-pid { color: var(--muted); }
+        .proc-cpu { color: var(--green); }
+        .proc-mem { color: var(--muted); }
+        .proc-cmd { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 
-        /* Modal & Palette */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
-        .hidden { display: none !important; }
-        
-        .chat-area { height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 5px; }
-        .msg { padding: 10px 14px; border-radius: 12px; font-size: 13px; max-width: 85%; }
-        .msg.ai { background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); align-self: flex-start; }
-        .msg.user { background: var(--primary); align-self: flex-end; }
+        /* ─── FILE EXPLORER ─── */
+        .file-section {
+            border-bottom: 1px solid var(--border);
+        }
+        .file-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+            flex-wrap: wrap;
+        }
+        .file-path {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--blue);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .file-explorer-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+        }
+        .file-list-panel { border-right: 1px solid var(--border); }
+        .file-items { height: 280px; overflow-y: auto; }
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 14px;
+            cursor: pointer;
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            gap: 8px;
+            border-bottom: 1px solid transparent;
+        }
+        .file-item:hover { background: var(--surface2); color: var(--text); }
+        .file-item.selected { background: var(--blue-dim); color: var(--blue); border-bottom-color: var(--border); }
+        .file-icon { flex-shrink: 0; width: 14px; text-align: center; font-size: 11px; }
+        .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-size { font-size: 9px; color: var(--dim); flex-shrink: 0; }
+        .file-editor-area {
+            width: 100%;
+            height: 280px;
+            background: #080808;
+            color: var(--green);
+            border: none;
+            font-family: var(--mono);
+            font-size: 11px;
+            padding: 14px;
+            resize: none;
+            outline: none;
+            display: block;
+        }
+        .file-editor-area::placeholder { color: var(--dim); }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            padding: 5px 12px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--muted);
+            transition: all 0.1s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover { color: var(--text); border-color: var(--border2); }
+        .btn.primary { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+        .btn.primary:hover { background: rgba(74,222,128,0.15); }
+        .btn.danger { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+        .btn.hidden { display: none !important; }
+        input[type="text"], input[type="password"], input[type="search"] {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 5px 10px;
+            font-family: var(--mono);
+            font-size: 11px;
+            border-radius: 2px;
+            outline: none;
+        }
+        input:focus { border-color: var(--border2); }
+
+        /* ─── MODALS ─── */
+        .overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+        .overlay.hidden { display: none !important; }
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            text-transform: uppercase;
+        }
+        .modal-close {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            width: 22px; height: 22px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 2px;
+            line-height: 1;
+            padding: 0;
+        }
+        .modal-close:hover { color: var(--text); border-color: var(--border2); }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+        /* Stat Drawer (detail panel) */
+        .drawer {
+            position: fixed;
+            right: 0; top: 38px;
+            width: 480px;
+            height: calc(100vh - 38px);
+            background: var(--surface);
+            border-left: 1px solid var(--border2);
+            z-index: 800;
+            transform: translateX(100%);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .drawer.open { transform: translateX(0); }
+        .drawer-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--mono);
+        }
+        .drawer-title { font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+        .drawer-body { flex: 1; overflow-y: auto; padding: 20px 18px; }
+        .drawer-chart { height: 200px; margin-bottom: 20px; background: var(--surface2); border: 1px solid var(--border); padding: 14px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 11px; }
+        .stat-key { color: var(--muted); }
+        .stat-val-text { color: var(--text); }
+        .drawer-tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .drawer-tab {
+            padding: 8px 16px;
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .drawer-tab:hover { color: var(--text); }
+        .drawer-tab.active { color: var(--text); border-bottom-color: var(--green); }
+
+        /* ─── HEALTH MODAL ─── */
+        .bell-container { background: var(--surface2); border: 1px solid var(--border); padding: 16px; margin-bottom: 16px; }
+        .xai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .xai-tile { background: var(--surface2); border: 1px solid var(--border); padding: 12px; }
+        .xai-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 4px; }
+        .xai-val { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+        .xai-explanation { font-size: 11px; color: var(--muted); line-height: 1.6; padding: 12px; background: var(--surface2); border: 1px solid var(--border); border-left: 2px solid var(--blue); font-style: italic; }
+
+        /* ─── CMD PALETTE ─── */
+        .palette-box { width: 560px; }
+        .palette-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+            font-family: var(--mono);
+            font-size: 14px;
+            padding: 16px 20px;
+            outline: none;
+        }
+        .palette-items { max-height: 380px; overflow-y: auto; padding: 6px; }
+        .pal-item {
+            padding: 9px 14px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--muted);
+            cursor: pointer;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .pal-item:hover { background: var(--surface2); color: var(--text); }
+        .pal-item::before { content: '>'; color: var(--dim); font-size: 10px; }
+        .pal-kbd { margin-left: auto; font-size: 9px; color: var(--dim); border: 1px solid var(--dim); padding: 1px 5px; border-radius: 2px; }
+
+        /* ─── SECURITY MODAL ─── */
+        .sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .sec-section-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+        .fleet-node { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 6px; font-family: var(--mono); font-size: 10px; }
+        .fleet-node-name { color: var(--text); font-weight: 600; }
+        .fleet-node-ip { color: var(--muted); }
+        .fleet-node-stat { color: var(--green); }
+        .wifi-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); margin-bottom: 4px; cursor: pointer; font-family: var(--mono); font-size: 11px; }
+        .wifi-item:hover { border-color: var(--border2); color: var(--text); }
+        .wifi-ssid { color: var(--text); }
+        .wifi-signal { font-size: 9px; color: var(--muted); }
+        .input-row { display: flex; flex-direction: column; gap: 6px; }
+        .input-row input { width: 100%; }
+
+        /* ─── LOGIN ─── */
+        #login-view {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--bg);
+        }
+        .login-box {
+            width: 340px;
+            border: 1px solid var(--border2);
+            background: var(--surface);
+        }
+        .login-header {
+            padding: 24px 28px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .login-logo { font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: 0.2em; color: var(--text); }
+        .login-sub { font-size: 10px; font-family: var(--mono); color: var(--muted); margin-top: 4px; letter-spacing: 0.08em; }
+        .login-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 10px; }
+        .login-body input { width: 100%; }
+        .login-err { font-size: 10px; font-family: var(--mono); color: var(--red); min-height: 14px; }
+        .btn-full { width: 100%; justify-content: center; padding: 8px 12px; font-size: 11px; }
+
+        /* mini chart in sidebar */
+        .mini-chart-wrap { height: 44px; }
+
+        /* Logs panel */
+        .logs-out {
+            height: 200px;
+            overflow-y: auto;
+            padding: 12px 16px;
+            font-family: var(--mono);
+            font-size: 10px;
+            line-height: 1.6;
+            color: var(--muted);
+            background: var(--bg);
+            white-space: pre-wrap;
+        }
+
+        /* Info tiles */
+        .info-tiles { display: grid; gap: 0; border-top: 1px solid var(--border); }
+        .info-tile { display: flex; justify-content: space-between; padding: 8px 16px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 10px; }
+        .info-tile-key { color: var(--muted); }
+        .info-tile-val { color: var(--text); }
     </style>
 </head>
 <body>
-    <div class="system-bar" id="sys-bar" style="display: none;">
-        <div style="display: flex; gap: 20px;">
-            <span style="color: var(--primary)">AIDASH</span>
-            <span id="bar-date" style="opacity: 0.5"></span>
-        </div>
-        <div style="display: flex; gap: 20px;">
-            <span id="bar-wifi" onclick="openSecurityModal()" style="cursor:pointer">📶 ...</span>
-            <span id="bar-battery">🔋 ...</span>
-            <span id="bar-user">👤 ...</span>
-        </div>
-    </div>
 
-    <div id="login-view" class="container" style="max-width: 400px; margin-top: 100px;">
-        <div class="glass-card" style="padding: 40px; text-align: center;">
-            <h1 style="margin-bottom: 8px;">AiDash</h1>
-            <p style="color: var(--text-dim); margin-bottom: 32px;">System Terminal Login</p>
-            <input type="text" id="username" placeholder="Username" style="width: 100%; margin-bottom: 12px;">
-            <input type="password" id="password" placeholder="Password" style="width: 100%; margin-bottom: 24px;">
-            <button onclick="login()" style="width: 100%; justify-content: center;">AUTHENTICATE</button>
-            <div id="login-err" style="color: var(--danger); margin-top: 16px; font-size: 12px;"></div>
+<!-- ═══════════ LOGIN ═══════════ -->
+<div id="login-view">
+    <div class="login-box">
+        <div class="login-header">
+            <div class="login-logo">AIDASH</div>
+            <div class="login-sub">EDGE MANAGEMENT SYSTEM</div>
+        </div>
+        <div class="login-body">
+            <input type="text" id="username" placeholder="username" autocomplete="off">
+            <input type="password" id="password" placeholder="password" onkeydown="if(event.key==='Enter') login()">
+            <div class="login-err" id="login-err"></div>
+            <button class="btn primary btn-full" onclick="login()">AUTHENTICATE →</button>
         </div>
     </div>
+</div>
 
-    <div id="main-dashboard" class="container hidden">
-        <header style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px;">
-            <div>
-                <h1 id="host-title">SYSTEM</h1>
-                <p id="system-uptime" style="color: var(--text-dim); font-size: 12px; font-weight: 600;"></p>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="secondary" onclick="togglePalette()">⌘ COMMANDS</button>
-                <button class="secondary" onclick="openSecurityModal()">FLEET</button>
-                <button class="secondary" style="color: var(--danger)" onclick="logout()">LOGOUT</button>
-            </div>
-        </header>
-
-        <div class="stats-strip">
-            <div class="stat-card" id="battery-stat-card" style="cursor: pointer;">
-                <div class="stat-label">BATTERY</div>
-                <div id="bat-val" class="stat-val">N/A</div>
-                <div class="bar-bg"><div id="bat-bar" class="bar-fill" style="width: 0%; background: var(--warning)"></div></div>
-                <div id="bat-details" style="font-size: 9px; margin-top: 8px; opacity: 0.6; display: none;"></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">MEMORY / SWAP</div>
-                <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                    <div id="mem-val" class="stat-val">0.0GB</div>
-                    <div id="swap-val" style="font-size: 14px; color: var(--text-dim); font-weight: 700;">SWAP: 0%</div>
-                </div>
-                <div class="bar-bg" style="height: 4px; margin-top: 8px;"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
-                <div class="bar-bg" style="height: 2px; margin-top: 4px; opacity: 0.3;"><div id="swap-bar" class="bar-fill" style="width: 0%; background: var(--text-dim)"></div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">PROCESSES</div>
-                <div id="proc-count-val" class="stat-val">0</div>
-                <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">ACTIVE TASKS IN /PROC</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">STORAGE</div>
-                <div id="disk-val" class="stat-val">0%</div>
-                <div class="bar-bg"><div id="disk-bar" class="bar-fill" style="width: 0%; background: var(--success)"></div></div>
-            </div>
-        </div>
-
-        <div class="grid" style="grid-template-columns: 2.2fr 1fr;">
-            <section class="glass-card" style="padding: 0; display: flex; flex-direction: column; border-color: var(--primary);">
-                <div style="padding: 12px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
-                    <div style="display: flex; gap: 15px; align-items: center;">
-                        <span style="font-weight: 800; font-size: 11px; letter-spacing: 0.1em; color: var(--primary);">HERO_TERMINAL_V2</span>
-                        <div id="anomaly-tag" style="font-size: 9px; font-weight: 800; color: var(--success);">● SYSTEM NOMINAL</div>
-                    </div>
-                    <div style="font-family: monospace; font-size: 10px; opacity: 0.6;" id="ip-display">
-                        IP: ...
-                    </div>
-                </div>
-                
-                <div id="hero-term-body" style="height: 350px; background: #000; overflow-y: auto; padding: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6;">
-                    <div style="color: var(--primary); margin-bottom: 10px;">[INIT] AiDash Intelligence Layer Active...</div>
-                    <div id="hero-term-out"></div>
-                </div>
-
-                <div style="display: flex; background: #080808; padding: 0 15px; border-top: 1px solid var(--card-border); align-items: center;">
-                    <span id="term-prompt" style="color: var(--primary); font-family: monospace; font-weight: 800; font-size: 14px;">$</span>
-                    <input type="text" id="hero-term-input" style="flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 15px; outline: none;" placeholder="Command system or query AI...">
-                    <div id="term-loading" class="hidden" style="width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                </div>
-            </section>
-
-            <section class="glass-card">
-                <h3>System Identity & AI Intel</h3>
-                <div style="font-size: 13px; display: grid; gap: 12px;">
-                    <div style="background: rgba(59, 130, 246, 0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--card-border); margin-bottom: 8px;">
-                        <div style="font-size: 10px; color: var(--primary); font-weight: 800; margin-bottom: 10px; letter-spacing: 0.1em;">AI ANOMALY ENGINE (XAI)</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                            <span style="color: var(--text-dim);">Confidence Score</span>
-                            <span id="ai-score" style="font-weight: 900; font-size: 18px;">0.0%</span>
-                        </div>
-                        <div class="bar-bg" style="height: 4px;"><div id="ai-bar" class="bar-fill" style="width: 0%; background: var(--primary)"></div></div>
-                        <div id="ai-status-text" style="font-size: 10px; margin-top: 8px; color: var(--success); font-weight: 700;">SYSTEM NOMINAL</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid var(--card-border); padding-top: 10px;">
-                            <div id="ai-why-text" style="font-size: 10px; color: var(--text-dim); font-style: italic; line-height: 1.4;">Establishing baseline...</div>
-                        </div>
-                    </div>
-                    
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Kernel</span> <span id="os-val">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Uptime</span> <span id="hero-uptime">...</span></div>
-                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Ports</span> <span id="os-ports">...</span></div>
-                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU LOAD HISTORY</span> <div style="height: 60px; width: 100%;"><canvas id="miniChart"></canvas></div></div>
-                </div>
-            </section>
-        </div>
-
-        <!-- File Explorer Restored -->
-        <div class="grid" style="grid-template-columns: 1fr;">
-            <section class="glass-card">
-                <h3>Interactive File Explorer</h3>
-                <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-                    <button class="secondary" onclick="browseFiles('..')">BACK</button>
-                    <div id="breadcrumbs" style="font-family: monospace; color: var(--primary); font-weight: 700; flex-grow: 1; overflow-x: auto; white-space: nowrap;">/host</div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="secondary" style="padding: 6px 10px;" onclick="newFolder()">+ FOLDER</button>
-                        <button class="secondary" style="padding: 6px 10px;" onclick="newFile()">+ FILE</button>
-                        <button id="download-btn" class="secondary hidden" style="padding: 6px 10px;" onclick="downloadFile()">↓ DL</button>
-                        <button id="delete-btn" class="secondary hidden" style="padding: 6px 10px; color: var(--danger);" onclick="deleteItem()">DEL</button>
-                    </div>
-                    <input type="text" id="file-search" placeholder="Search files..." onkeyup="if(event.key==='Enter') searchFiles()" style="width: 200px;">
-                    <button id="save-btn" class="hidden" onclick="saveFile()" style="background: var(--success);">SAVE CHANGES</button>
-                </div>
-                <div style="display: grid; grid-template-columns: 350px 1fr; gap: 1px; background: var(--card-border); border: 1px solid var(--card-border); border-radius: 10px; overflow: hidden;">
-                    <div id="file-list" class="file-list" style="background: var(--bg); padding: 8px;"></div>
-                    <div id="file-editor" style="background: #000;">
-                        <textarea id="editor-area" style="width: 100%; height: 400px; background: transparent; color: #10b981; border: none; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px; resize: none; outline: none;" readonly placeholder="Select a file to edit..."></textarea>
-                    </div>
-                </div>
-            </section>
-        </div>
-
-        <div class="grid" style="grid-template-columns: 1fr;">
-             <section class="glass-card">
-                <h3>Active System Processes</h3>
-                <div style="overflow-x: auto;">
-                    <table style="width:100%; font-size: 12px; text-align: left; border-collapse: collapse;">
-                        <thead style="opacity: 0.5; font-size: 10px; border-bottom: 1px solid var(--card-border);">
-                            <tr>
-                                <th style="padding: 10px;">PROCESS NAME</th>
-                                <th>PID</th>
-                                <th>CPU%</th>
-                                <th>MEM%</th>
-                                <th>COMMAND</th>
-                            </tr>
-                        </thead>
-                        <tbody id="proc-list"></tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div id="topbar">
+    <div class="topbar-left">
+        <span class="topbar-logo">AIDASH</span>
+        <span class="topbar-stat" id="bar-date"></span>
+        <span class="topbar-stat">IP: <span id="bar-ip">—</span></span>
     </div>
-
-    <!-- Modals -->
-    <div id="sec-modal" class="modal hidden">
-        <div class="glass-card" style="width: 700px; padding: 32px; max-height: 90vh; display: flex; flex-direction: column;">
-            <h2 style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
-                AI Security & Federated Fleet
-                <button class="secondary" onclick="closeSecurityModal()">×</button>
-            </h2>
-            
-            <div style="flex-grow: 1; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-                <div>
-                    <h3 style="margin-bottom: 12px; color: var(--primary);">Explainable AI (XAI) Engine</h3>
-                    <div style="background: rgba(0,0,0,0.3); padding: 16px; border-radius: 10px; border: 1px solid var(--card-border); font-size: 11px;">
-                        <div style="margin-bottom: 10px;">
-                            <span style="color:var(--text-dim)">Current Baseline:</span> 
-                            <span id="xai-baseline" style="color:var(--success)">Dynamic Moving Average</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <span style="color:var(--text-dim)">UBA Profile:</span> 
-                            <span id="xai-uba" style="color:var(--primary)">Pattern Recognition Active</span>
-                        </div>
-                        <p style="color: var(--text-dim); line-height: 1.4;">
-                            The AI classifies anomalies by calculating the Euclidean distance from the 20-point rolling baseline. 
-                            Interceptions occur when <span style="color:var(--warning)">Novelty > 85%</span> or <span style="color:var(--warning)">Variance > 2.5σ</span>.
-                        </p>
-                    </div>
-
-                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Admin Credentials</h3>
-                    <input type="password" id="old-pass" placeholder="Current Password" style="width: 100%; margin-bottom: 8px;">
-                    <input type="password" id="new-pass" placeholder="New Password" style="width: 100%; margin-bottom: 20px;">
-                    <button onclick="changePassword()" style="width: 100%; justify-content: center; background: var(--accent);">UPDATE PASSWORD</button>
-                </div>
-
-                <div>
-                    <h3 style="margin-bottom: 12px; color: var(--success);">Federated Node Discovery</h3>
-                    <div id="fleet-container" style="display: grid; gap: 8px; margin-bottom: 16px;">
-                        <!-- Nodes injected here -->
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; border: 1px dashed var(--card-border);">
-                        <input type="text" id="node-name" placeholder="Node Name (e.g. Edge-02)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
-                        <input type="text" id="node-ip" placeholder="IP Address (e.g. 192.168.1.5)" style="width: 100%; margin-bottom: 8px; font-size: 11px;">
-                        <button class="secondary" onclick="addNode()" style="width: 100%; justify-content: center; font-size: 10px;">+ ADOPT NODE</button>
-                    </div>
-
-                    <h3 style="margin-top: 24px; margin-bottom: 12px;">Wireless Spectrum</h3>
-                    <button class="secondary" style="width: 100%; margin-bottom: 8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
-                    <div id="wifi-list-container" style="max-height: 150px; overflow-y: auto;"></div>
-                </div>
-            </div>
-        </div>
+    <div class="topbar-right">
+        <span id="bar-wifi">WIFI: —</span>
+        <span id="bar-battery">PWR: AC</span>
+        <span id="bar-user"></span>
     </div>
+</div>
 
-    <!-- Terminal -->
-    <div id="term-modal" class="modal hidden">
-        <div class="glass-card" style="width: 80%; height: 80%; display: flex; flex-direction: column; padding: 0; border-color: var(--primary);">
-            <div style="padding: 12px 20px; border-bottom: 1px solid var(--card-border); display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-weight: 800; font-size: 12px; color: var(--primary);">SYSTEM TERMINAL</span>
-                <button class="secondary" style="padding: 4px 8px;" onclick="closeTerminal()">×</button>
-            </div>
-            <div id="term-out" style="flex-grow: 1; background: #000; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 20px; overflow-y: auto; white-space: pre-wrap;"></div>
-            <div style="display: flex; background: #111; padding: 10px;">
-                <span style="color: var(--primary); padding: 10px 0 10px 10px; font-family: monospace; font-weight: 800;">$</span>
-                <input type="text" id="term-input" style="flex-grow: 1; background: transparent; border: none; color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 13px; padding: 10px; outline: none;" placeholder="Enter command...">
-            </div>
+<!-- ═══════════ MAIN DASHBOARD ═══════════ -->
+<div id="main-dashboard">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Node</div>
+        <div class="sidebar-host" id="host-title">LOADING</div>
+        <div class="sidebar-sub" id="system-uptime">uptime —</div>
+      </div>
+
+      <nav style="padding: 8px 0;">
+        <div class="nav-item active" onclick="scrollToSection('metrics')"><span class="nav-dot"></span>Metrics</div>
+        <div class="nav-item" onclick="scrollToSection('terminal')"><span class="nav-dot"></span>Terminal</div>
+        <div class="nav-item" onclick="scrollToSection('processes')"><span class="nav-dot"></span>Processes</div>
+        <div class="nav-item" onclick="scrollToSection('files')"><span class="nav-dot"></span>File Explorer</div>
+        <div class="nav-item" onclick="openSecurityModal()"><span class="nav-dot"></span>Fleet / WiFi</div>
+      </nav>
+
+      <!-- Mini metrics -->
+      <div class="sidebar-metrics">
+        <div class="mini-metric">
+          <div class="mini-metric-header">
+            <span class="mini-metric-name">CPU</span>
+            <span class="mini-metric-val" id="sb-cpu">—</span>
+          </div>
+          <div class="mini-bar"><div class="mini-bar-fill" id="sb-cpu-bar" style="width:0%"></div></div>
         </div>
-    </div>
-
-    <!-- Palette -->
-    <div id="palette" class="modal hidden" onclick="if(event.target===this) togglePalette()">
-        <div class="glass-card" style="width: 600px; padding: 0; align-self: flex-start; margin-top: 100px; border-color: var(--primary);">
-            <input type="text" id="pal-input" placeholder="Execute system command..." style="width: 100%; font-size: 18px; padding: 24px; border: none; border-bottom: 1px solid var(--card-border); background: transparent;">
-            <div id="pal-items" style="max-height: 450px; overflow-y: auto; padding: 12px;">
-                <div class="pal-item" onclick="execCmd('ls -lah')">List Files (Detailed)</div>
-                <div class="pal-item" onclick="execCmd('df -h')">Disk Space Usage</div>
-                <div class="pal-item" onclick="execCmd('ps aux')">Process Management Tree</div>
-                <div class="pal-item" onclick="execCmd('uptime')">System Uptime & Load</div>
-                <div class="pal-item" onclick="execCmd('free -m')">Detailed RAM Analysis</div>
-                <div class="pal-item" onclick="execCmd('du -sh *')">Disk Usage per Directory</div>
-                <div class="pal-item" onclick="execCmd('nproc')">CPU Core Count</div>
-                <div class="pal-item" onclick="execCmd('whoami')">Current User Check</div>
-                <div class="pal-item" onclick="execCmd('lsblk')">Block Device Information</div>
-                <div class="pal-item" onclick="execCmd('last -n 5')">Recent Login Activity</div>
-                <div class="pal-item" onclick="location.reload()">Force Dashboard Refresh</div>
-            </div>
+        <div class="mini-metric">
+          <div class="mini-metric-header">
+            <span class="mini-metric-name">MEM</span>
+            <span class="mini-metric-val" id="sb-mem">—</span>
+          </div>
+          <div class="mini-bar"><div class="mini-bar-fill" id="sb-mem-bar" style="width:0%; background:var(--blue)"></div></div>
         </div>
-    </div>
+        <div class="mini-metric">
+          <div class="mini-metric-header">
+            <span class="mini-metric-name">DISK</span>
+            <span class="mini-metric-val" id="sb-disk">—</span>
+          </div>
+          <div class="mini-bar"><div class="mini-bar-fill" id="sb-disk-bar" style="width:0%; background:var(--amber)"></div></div>
+        </div>
+        <div class="mini-chart-wrap">
+          <canvas id="miniChart"></canvas>
+        </div>
+      </div>
 
-    <style>
-        .pal-item { padding: 14px 18px; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 600; }
-        .pal-item:hover { background: var(--primary); color: white; transform: translateX(8px); }
-    </style>
+      <!-- Anomaly engine -->
+      <div class="sidebar-anomaly" onclick="openHealthModal()" title="Click for XAI analysis">
+        <div class="anomaly-header">
+          <span class="anomaly-label">AI ANOMALY ENGINE</span>
+          <span class="anomaly-score" id="ai-score" style="color:var(--green)">0%</span>
+        </div>
+        <div class="anomaly-bar">
+          <div class="anomaly-bar-fill" id="ai-bar" style="width:0%"></div>
+        </div>
+        <div class="anomaly-status" id="ai-status-text" style="color:var(--green)">NOMINAL</div>
+        <div class="anomaly-why" id="ai-why-text">Establishing baseline...</div>
+      </div>
 
-    <script>
-        const API = {
-            async post(url, body) { return fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) }).then(r => r.json()); },
-            async get(url) { return fetch(url).then(r => r.json()); }
-        };
+      <!-- Info tiles -->
+      <div class="info-tiles">
+        <div class="info-tile"><span class="info-tile-key">KERNEL</span><span class="info-tile-val" id="os-val">—</span></div>
+        <div class="info-tile"><span class="info-tile-key">PORTS</span><span class="info-tile-val" id="os-ports">—</span></div>
+        <div class="info-tile"><span class="info-tile-key" id="anomaly-tag" style="color:var(--green)">● NOMINAL</span><span class="info-tile-val"></span></div>
+      </div>
 
-        let miniChart, currentDir = '.', currentFile = null, termMode = 'SYSTEM';
+      <div class="sidebar-footer">
+        <button class="sidebar-btn" onclick="togglePalette()">⌘  CMD PALETTE  <span style="margin-left:auto; font-size:9px; color:var(--dim)">ctrl+k</span></button>
+        <button class="sidebar-btn" onclick="openSecurityModal()">⊞  FLEET COMMANDER</button>
+        <button class="sidebar-btn danger" onclick="logout()">⏻  LOGOUT</button>
+      </div>
+    </aside>
 
-        function initChart() {
-            const ctx = document.getElementById('miniChart').getContext('2d');
-            miniChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: [], datasets: [
-                    { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1 }
-                ]},
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                    scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } }
-                }
-            });
-        }
+    <!-- MAIN CONTENT -->
+    <main class="content" id="metrics">
 
-        async function login() {
-            const data = await API.post('/api/login', { username: document.getElementById('username').value, password: document.getElementById('password').value });
-            if (data.success) { localStorage.setItem('aidash_role', data.role); localStorage.setItem('aidash_user', document.getElementById('username').value); startApp(); } 
-            else { document.getElementById('login-err').textContent = data.message; }
-        }
+      <!-- METRIC CARDS -->
+      <div class="metrics-row">
+        <div class="metric-card active" id="cpu-card" onclick="openDrawer('cpu')">
+          <div class="metric-card-label">CPU LOAD</div>
+          <div class="metric-card-val" id="cpu-val">0%</div>
+          <div class="metric-card-sub" id="cpu-sub">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar" style="width:0%; background:var(--green)"></div></div>
+          <span class="metric-card-hint">EXPAND ↗</span>
+        </div>
+        <div class="metric-card" id="mem-card" onclick="openDrawer('mem')">
+          <div class="metric-card-label">MEMORY</div>
+          <div class="metric-card-val" id="mem-val">0.0 GB</div>
+          <div class="metric-card-sub" id="mem-sub">SWAP: 0%</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="mem-bar" style="width:0%; background:var(--blue)"></div></div>
+          <span class="metric-card-hint">EXPAND ↗</span>
+        </div>
+        <div class="metric-card" id="proc-card" onclick="openDrawer('processes')">
+          <div class="metric-card-label">PROCESSES</div>
+          <div class="metric-card-val" id="proc-count-val">0</div>
+          <div class="metric-card-sub">ACTIVE IN /PROC</div>
+          <div class="metric-bar" style="height:0"></div>
+          <span class="metric-card-hint">EXPAND ↗</span>
+        </div>
+        <div class="metric-card" id="disk-card" onclick="openDrawer('disk')">
+          <div class="metric-card-label">STORAGE</div>
+          <div class="metric-card-val" id="disk-val">0%</div>
+          <div class="metric-card-sub" id="disk-sub">—</div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="disk-bar" style="width:0%; background:var(--amber)"></div></div>
+          <span class="metric-card-hint">EXPAND ↗</span>
+        </div>
+      </div>
 
-        function writeToHero(text, type = 'output') {
-            const out = document.getElementById('hero-term-out');
-            const div = document.createElement('div');
-            div.style.marginBottom = '8px';
-            if (type === 'cmd') div.innerHTML = `<span style="color:var(--primary)">$</span> <span style="color:#fff">${text}</span>`;
-            else div.innerHTML = text;
-            out.appendChild(div);
-            document.getElementById('hero-term-body').scrollTop = document.getElementById('hero-term-body').scrollHeight;
-        }
+      <!-- CHART PANEL -->
+      <div class="chart-panel">
+        <div class="chart-panel-header">
+          <div class="chart-panel-title">
+            <span class="live-dot"></span>
+            <span id="panel-chart-title">CPU LOAD · LIVE TELEMETRY</span>
+          </div>
+          <div class="chart-panel-actions">
+            <button class="chip-btn active" onclick="switchChartView('cpu')">CPU</button>
+            <button class="chip-btn" onclick="switchChartView('mem')">MEM</button>
+            <button class="chip-btn" onclick="switchChartView('processes')">PROC</button>
+            <button class="chip-btn" onclick="switchChartView('disk')">DISK</button>
+          </div>
+        </div>
+        <div class="chart-body">
+          <canvas id="mainChart"></canvas>
+        </div>
+      </div>
 
-        async function handleHeroInput(e) {
-            if (e.key !== 'Enter') return;
-            const val = e.target.value.trim();
-            if (!val) return;
-            e.target.value = '';
-            
-            writeToHero(val, 'cmd');
-            document.getElementById('term-loading').classList.remove('hidden');
+      <!-- TERMINAL + PROCESSES -->
+      <div class="panels-row" id="terminal">
+        <!-- TERMINAL -->
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">HERO_TERMINAL_V2</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span id="term-anomaly-tag" style="font-family:var(--mono);font-size:9px;color:var(--green)">● NOMINAL</span>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--muted)" id="ip-display"></span>
+            </div>
+          </div>
+          <div class="terminal-body" id="hero-term-body">
+            <div style="color:var(--green); margin-bottom:4px; font-family:var(--mono); font-size:11px;">[INIT] AiDash intelligence layer active.</div>
+            <div id="hero-term-out"></div>
+          </div>
+          <div class="terminal-input-row">
+            <span class="term-input-prompt" id="term-prompt">$</span>
+            <input class="term-input" type="text" id="hero-term-input" placeholder="enter command..." autocomplete="off" spellcheck="false">
+            <div class="term-spinner hidden" id="term-loading"></div>
+          </div>
+        </div>
 
-            const bypass = val.includes('--force');
-            const cleanCmd = val.replace('--force', '').trim();
-            const res = await API.post('/api/command', { command: cleanCmd, bypass: bypass });
-            writeToHero(res.output || '(Success, no output)');
-            if (res.intercepted) {
-                writeToHero("ALERT: Safety Interceptor is active for this command.", "output");
-            }
-            document.getElementById('term-loading').classList.add('hidden');
-        }
-
-        function startApp() {
-            document.getElementById('login-view').classList.add('hidden');
-            document.getElementById('main-dashboard').classList.remove('hidden');
-            document.getElementById('sys-bar').style.display = 'flex';
-            
-            document.getElementById('hero-term-input').onkeydown = handleHeroInput;
-            document.getElementById('battery-stat-card').onclick = () => {
-                const details = document.getElementById('bat-details');
-                details.style.display = details.style.display === 'none' ? 'block' : 'none';
-            };
-
-            initChart();
-            refreshAll();
-            browseFiles('/host', true);
-            setInterval(refreshAll, 5000);
-        }
-
-        let lastAlertCount = 0;
-        async function refreshAll() {
-            const [stats, disk, history, alerts, services] = await Promise.all([
-                API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'), API.get('/api/alerts'),
-                API.get('/api/services')
-            ]);
-
-            document.getElementById('host-title').textContent = stats.os.hostname.toUpperCase();
-            document.getElementById('hero-uptime').textContent = `${Math.floor(stats.uptime/3600)}H ${Math.floor((stats.uptime%3600)/60)}M`;
-            document.getElementById('bar-date').textContent = stats.metrics.date;
-            document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
-            
-            // Battery Update
-            const bat = stats.metrics.battery;
-            if (bat !== 'N/A') {
-                document.getElementById('bar-battery').textContent = `${bat.isCharging ? '⚡' : '🔋'} ${bat.percent}%`;
-                document.getElementById('bat-val').textContent = `${bat.percent}%`;
-                document.getElementById('bat-bar').style.width = `${bat.percent}%`;
-                document.getElementById('bat-details').textContent = `${bat.isCharging ? 'Charging' : 'Discharging'} @ /sys/class/power_supply`;
-            } else {
-                document.getElementById('bar-battery').textContent = '🔌 AC';
-                document.getElementById('bat-val').textContent = '100%';
-                document.getElementById('bat-bar').style.width = '100%';
-                document.getElementById('bat-details').textContent = 'Stable AC Power Source';
-            }
-
-            // AI Anomaly Updates
-            const anomaly = stats.metrics.anomaly;
-            document.getElementById('ai-score').textContent = `${anomaly.score}%`;
-            document.getElementById('ai-bar').style.width = `${anomaly.score}%`;
-            document.getElementById('ai-status-text').textContent = anomaly.status;
-            document.getElementById('ai-why-text').textContent = anomaly.why || 'Monitoring patterns...';
-            const tag = document.getElementById('anomaly-tag');
-            tag.textContent = `● ${anomaly.status}`;
-            tag.style.color = anomaly.score > 75 ? 'var(--danger)' : (anomaly.score > 40 ? 'var(--warning)' : 'var(--success)');
-
-            // Active System Processes
-            const procHtml = (services || []).map(p => `
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
-                    <td style="color:var(--primary); font-weight:800; padding:10px;">${p.name}</td>
-                    <td>${p.pid}</td>
-                    <td style="color:var(--success); font-weight:700;">${p.cpu}%</td>
-                    <td style="opacity:0.6;">${p.mem}%</td>
-                    <td style="font-size:10px; opacity:0.4; font-family:monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${p.cmd || ''}</td>
+        <!-- PROCESSES -->
+        <div class="panel" id="processes">
+          <div class="panel-header">
+            <span class="panel-title">ACTIVE PROCESSES</span>
+          </div>
+          <div class="proc-body">
+            <table class="proc-table">
+              <thead>
+                <tr>
+                  <th>PROCESS</th>
+                  <th>PID</th>
+                  <th>CPU%</th>
+                  <th>MEM%</th>
+                  <th>COMMAND</th>
                 </tr>
-            `).join('');
-            document.getElementById('proc-list').innerHTML = procHtml || '<tr><td colspan="5" style="text-align:center; opacity:0.5; padding:20px;">No processes found</td></tr>';
+              </thead>
+              <tbody id="proc-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-            // Handle New Alerts in Terminal
-            if (alerts && alerts.length > lastAlertCount) {
-                alerts.slice(lastAlertCount).forEach(a => {
-                    const color = a.severity === 'danger' ? '#f43f5e' : (a.severity === 'warning' ? '#f59e0b' : '#10b981');
-                    writeToHero(`<span style="color:${color}; font-weight:800;">[${a.type}]</span> ${a.message}`);
-                });
-                lastAlertCount = alerts.length;
-            }
+      <!-- FILE EXPLORER -->
+      <div class="file-section" id="files">
+        <div class="panel-header">
+          <span class="panel-title">FILE EXPLORER</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn" onclick="browseFiles('..')">← BACK</button>
+            <button class="btn" onclick="newFolder()">+ DIR</button>
+            <button class="btn" onclick="newFile()">+ FILE</button>
+            <button id="download-btn" class="btn hidden" onclick="downloadFile()">↓ DL</button>
+            <button id="delete-btn" class="btn danger hidden" onclick="deleteItem()">DEL</button>
+            <button id="save-btn" class="btn primary hidden" onclick="saveFile()">✓ SAVE</button>
+            <input type="search" id="file-search" placeholder="search..." onkeyup="if(event.key==='Enter') searchFiles()" style="width:140px;">
+          </div>
+        </div>
+        <div class="file-toolbar">
+          <span style="font-family:var(--mono);font-size:9px;letter-spacing:0.12em;color:var(--muted)">PATH</span>
+          <div class="file-path" id="breadcrumbs">/host</div>
+        </div>
+        <div class="file-explorer-grid">
+          <div class="file-list-panel">
+            <div class="file-items" id="file-list"></div>
+          </div>
+          <textarea class="file-editor-area" id="editor-area" readonly placeholder="// select a file to view or edit"></textarea>
+        </div>
+      </div>
 
-            document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
-            document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
-            
-            document.getElementById('swap-val').textContent = `SWAP: ${stats.metrics.swap}%`;
-            document.getElementById('swap-bar').style.width = stats.metrics.swap + '%';
-            document.getElementById('proc-count-val').textContent = stats.metrics.totalProcesses;
-            
-            const ipv4 = stats.metrics.ipv4 || 'N/A';
-            const ipv6 = stats.metrics.ipv6 || 'N/A';
-            document.getElementById('ip-display').innerHTML = `<span title="${ipv6}" style="cursor:help">IP: ${ipv4}</span>`;
+    </main>
+  </div>
+</div>
 
-            document.getElementById('disk-val').textContent = disk.main.usage;
-            document.getElementById('disk-bar').style.width = disk.main.usage;
-            document.getElementById('os-val').textContent = stats.os.platform;
-            document.getElementById('os-ports').textContent = stats.metrics.ports;
+<!-- ═══════════ DRAWER (metric detail) ═══════════ -->
+<div id="metric-drawer" class="drawer">
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawer-title">CPU DETAIL</span>
+    <button class="modal-close" onclick="closeDrawer()">×</button>
+  </div>
+  <div class="drawer-tabs">
+    <div class="drawer-tab active" id="dtab-history" onclick="setDrawerTab('history')">HISTORY</div>
+    <div class="drawer-tab" id="dtab-stats" onclick="setDrawerTab('stats')">STATS</div>
+  </div>
+  <div class="drawer-body">
+    <div id="drawer-tab-history">
+      <div class="drawer-chart">
+        <canvas id="drawerChart"></canvas>
+      </div>
+      <div id="drawer-stats-rows"></div>
+    </div>
+    <div id="drawer-tab-stats" style="display:none">
+      <!-- extra stats panel -->
+      <div id="drawer-extra"></div>
+    </div>
+  </div>
+</div>
 
-            miniChart.data.labels = history.labels;
-            miniChart.data.datasets[0].data = history.cpu;
-            miniChart.update('none');
-        }
+<!-- ═══════════ HEALTH / XAI MODAL ═══════════ -->
+<div id="health-modal" class="overlay hidden" onclick="if(event.target===this)closeHealthModal()">
+  <div class="modal-box" style="width:480px;">
+    <div class="modal-header">
+      XAI ANOMALY ENGINE
+      <button class="modal-close" onclick="closeHealthModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="bell-container">
+        <svg viewBox="0 0 400 130" style="width:100%; height:100%;">
+          <defs>
+            <linearGradient id="gaus-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--green)" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="var(--green)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- sigma zones -->
+          <rect x="130" y="0" width="140" height="120" fill="rgba(96,165,250,0.04)"/>
+          <rect x="170" y="0" width="60" height="120" fill="rgba(96,165,250,0.07)"/>
+          <!-- bell curve fill -->
+          <path d="M 20 120 C 60 120 100 120 140 100 C 160 90 180 20 200 10 C 220 20 240 90 260 100 C 300 120 340 120 380 120 Z" fill="url(#gaus-grad)"/>
+          <!-- bell curve line -->
+          <path d="M 20 120 C 60 120 100 120 140 100 C 160 90 180 20 200 10 C 220 20 240 90 260 100 C 300 120 340 120 380 120" fill="none" stroke="var(--green)" stroke-width="1.5" opacity="0.6"/>
+          <!-- sigma labels -->
+          <text x="130" y="128" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="IBM Plex Mono">-2σ</text>
+          <text x="200" y="128" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="IBM Plex Mono">μ</text>
+          <text x="270" y="128" text-anchor="middle" font-size="8" fill="var(--muted)" font-family="IBM Plex Mono">+2σ</text>
+          <!-- needle -->
+          <line id="z-needle" x1="200" y1="10" x2="200" y2="120" stroke="var(--amber)" stroke-width="2" stroke-dasharray="3,3"/>
+          <circle id="z-dot" cx="200" cy="10" r="4" fill="var(--amber)"/>
+        </svg>
+      </div>
+      <div class="xai-grid">
+        <div class="xai-tile">
+          <div class="xai-label">Z-SCORE (σ)</div>
+          <div class="xai-val" id="modal-z-val" style="color:var(--green)">0.00</div>
+        </div>
+        <div class="xai-tile">
+          <div class="xai-label">PROBABILITY</div>
+          <div class="xai-val" id="modal-p-val" style="color:var(--green); font-size:14px;">Normal</div>
+        </div>
+      </div>
+      <div class="xai-explanation" id="modal-explanation">Calculating variance...</div>
+    </div>
+  </div>
+</div>
 
-        function formatSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
+<!-- ═══════════ SECURITY / FLEET MODAL ═══════════ -->
+<div id="sec-modal" class="overlay hidden" onclick="if(event.target===this)closeSecurityModal()">
+  <div class="modal-box" style="width:680px;">
+    <div class="modal-header">
+      FLEET COMMANDER &amp; SECURITY HUB
+      <button class="modal-close" onclick="closeSecurityModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="sec-grid">
+        <!-- Left col -->
+        <div>
+          <div class="sec-section-title">XAI ENGINE STATUS</div>
+          <div style="background:var(--surface2); border:1px solid var(--border); padding:12px; font-family:var(--mono); font-size:10px; line-height:1.8; color:var(--muted); margin-bottom:20px;">
+            <div>Baseline: <span style="color:var(--green)" id="xai-baseline">Moving Average (20pt)</span></div>
+            <div>UBA: <span style="color:var(--blue)" id="xai-uba">Pattern Recognition Active</span></div>
+            <div style="margin-top:8px; line-height:1.6;">Anomaly fires when <span style="color:var(--amber)">Novelty &gt;85%</span> or <span style="color:var(--amber)">Variance &gt;2.5σ</span></div>
+          </div>
 
-        async function browseFiles(path = '/host', isAbsolute = false) {
-            if (isAbsolute) { currentDir = path; }
-            else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
-            else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
+          <div class="sec-section-title">ADMIN CREDENTIALS</div>
+          <div class="input-row" style="gap:6px;">
+            <input type="password" id="old-pass" placeholder="current password" style="width:100%">
+            <input type="password" id="new-pass" placeholder="new password" style="width:100%">
+            <button class="btn" style="justify-content:center;" onclick="changePassword()">UPDATE PASSWORD</button>
+          </div>
+        </div>
 
-            currentDir = currentDir.replace(/\/+/g, '/');
-            if (!currentDir.startsWith('/host')) currentDir = '/host';
-            document.getElementById('breadcrumbs').textContent = currentDir;
+        <!-- Right col -->
+        <div>
+          <div class="sec-section-title">FEDERATED NODES</div>
+          <div id="fleet-container" style="margin-bottom:12px;"></div>
+          <div style="border:1px dashed var(--border); padding:10px; display:flex; flex-direction:column; gap:6px; margin-bottom:20px;">
+            <input type="text" id="node-name" placeholder="node alias (e.g. edge-02)" style="width:100%">
+            <input type="text" id="node-ip" placeholder="ip address (e.g. 192.168.1.5)" style="width:100%">
+            <button class="btn" style="justify-content:center;" onclick="addNode()">+ ADOPT NODE</button>
+          </div>
 
-            let items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+          <div class="sec-section-title">WIRELESS SPECTRUM</div>
+          <button class="btn" style="width:100%; justify-content:center; margin-bottom:8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
+          <div id="wifi-list-container" style="max-height:180px; overflow-y:auto;"></div>
+          <div id="wifi-join-form" class="hidden" style="background:var(--surface2); border:1px solid var(--border); padding:12px; margin-top:8px;">
+            <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:8px;" id="joining-ssid">JOINING: ...</div>
+            <input type="password" id="wifi-pass" placeholder="network password" style="width:100%; margin-bottom:8px;">
+            <div style="display:flex; gap:8px;">
+              <button class="btn primary" id="join-btn" onclick="connectWifi()" style="flex:1; justify-content:center;">CONNECT</button>
+              <button class="btn" onclick="cancelJoin()" style="justify-content:center;">CANCEL</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-            // Fallback for non-docker environments where /host doesn't exist
-            if (items.error && currentDir === '/host') {
-                console.warn("Host filesystem not available, falling back to local root.");
-                currentDir = '.';
-                document.getElementById('breadcrumbs').textContent = "LOCAL ROOT (Fallback)";
-                items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
-            }
+<!-- ═══════════ FULL TERMINAL MODAL ═══════════ -->
+<div id="term-modal" class="overlay hidden">
+  <div class="modal-box" style="width:75%; height:75vh; display:flex; flex-direction:column;">
+    <div class="modal-header">
+      SYSTEM TERMINAL
+      <button class="modal-close" onclick="closeTerminal()">×</button>
+    </div>
+    <div id="term-out" style="flex:1; background:#080808; color:var(--text); font-family:var(--mono); font-size:12px; padding:16px; overflow-y:auto; white-space:pre-wrap;"></div>
+    <div style="display:flex; background:#080808; border-top:1px solid var(--border); padding:0 16px; align-items:center; gap:8px;">
+      <span style="color:var(--green); font-family:var(--mono); font-weight:700;">$</span>
+      <input type="text" id="term-input" style="flex:1; background:transparent; border:none; color:var(--text); font-family:var(--mono); font-size:12px; padding:10px 0; outline:none;" placeholder="command...">
+    </div>
+  </div>
+</div>
 
-            document.getElementById('file-list').innerHTML = (items.error ? [] : items).map(i => `
+<!-- ═══════════ CMD PALETTE ═══════════ -->
+<div id="palette" class="overlay hidden" onclick="if(event.target===this)togglePalette()">
+  <div class="modal-box palette-box" style="align-self:flex-start; margin-top:80px;">
+    <input class="palette-input" type="text" id="pal-input" placeholder="run command or navigate...">
+    <div class="palette-items" id="pal-items">
+      <div class="pal-item" onclick="execCmd('ls -lah')">List files (detailed) <span class="pal-kbd">ls -lah</span></div>
+      <div class="pal-item" onclick="execCmd('df -h')">Disk space usage <span class="pal-kbd">df -h</span></div>
+      <div class="pal-item" onclick="execCmd('ps aux')">Process tree <span class="pal-kbd">ps aux</span></div>
+      <div class="pal-item" onclick="execCmd('uptime')">System uptime &amp; load <span class="pal-kbd">uptime</span></div>
+      <div class="pal-item" onclick="execCmd('free -m')">RAM analysis <span class="pal-kbd">free -m</span></div>
+      <div class="pal-item" onclick="execCmd('du -sh *')">Disk usage per dir</div>
+      <div class="pal-item" onclick="execCmd('nproc')">CPU core count</div>
+      <div class="pal-item" onclick="execCmd('whoami')">Current user</div>
+      <div class="pal-item" onclick="execCmd('lsblk')">Block device info</div>
+      <div class="pal-item" onclick="execCmd('last -n 5')">Recent login activity</div>
+      <div class="pal-item" onclick="location.reload()">Force dashboard refresh</div>
+    </div>
+  </div>
+</div>
 
-                <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}" style="justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span>${i.isDir ? '📁' : '📄'}</span> 
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px;">${i.name}</span>
-                    </div>
-                    ${!i.isDir ? `<span style="font-size: 10px; color: var(--text-dim); font-family: monospace;">${formatSize(i.size)}</span>` : ''}
-                </div>
-            `).join('');
-            
-            // Clear selection buttons
-            document.getElementById('download-btn').classList.add('hidden');
-            document.getElementById('delete-btn').classList.add('hidden');
-            currentFile = null;
-        }
+<script>
+    const API = {
+        async post(url, body) { return fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) }).then(r => r.json()); },
+        async get(url) { return fetch(url).then(r => r.json()); }
+    };
 
-        async function readFile(name) {
-            const path = (currentDir === '/' ? '' : currentDir + '/') + name;
-            const res = await fetch('/api/files/read?path=' + encodeURIComponent(path));
-            if (res.ok) { 
-                document.getElementById('editor-area').value = await res.text(); 
-                document.getElementById('editor-area').readOnly = false; 
-                currentFile = path; 
-                document.getElementById('save-btn').classList.remove('hidden'); 
-                document.getElementById('download-btn').classList.remove('hidden');
-                document.getElementById('delete-btn').classList.remove('hidden');
-                
-                // Highlight selected item
-                document.querySelectorAll('.file-item').forEach(el => {
-                    if (el.textContent.includes(name)) el.style.background = 'var(--primary-glow)';
-                    else el.style.background = 'transparent';
-                });
-            }
-        }
+    let miniChart, mainChart, drawerChart;
+    let currentDir = '/host', currentFile = null, currentView = 'cpu';
+    let drawerOpen = false, currentDrawerView = 'cpu';
 
-        async function newFolder() {
-            const name = prompt('Folder Name:');
-            if (name) {
-                const res = await API.post('/api/files/mkdir', { path: currentDir + '/' + name });
-                if (res.success) browseFiles('.');
-                else alert('Error creating folder');
-            }
-        }
+    // ─── CHART COLORS ───
+    const viewColors = {
+        cpu:       { color: '#4ade80', bg: 'rgba(74,222,128,0.06)' },
+        mem:       { color: '#60a5fa', bg: 'rgba(96,165,250,0.06)' },
+        processes: { color: '#fbbf24', bg: 'rgba(251,191,36,0.06)' },
+        disk:      { color: '#2dd4bf', bg: 'rgba(45,212,191,0.06)' },
+    };
+    const viewTitles = {
+        cpu: 'CPU LOAD · LIVE TELEMETRY',
+        mem: 'MEMORY USAGE · LIVE TELEMETRY',
+        processes: 'PROCESS COUNT · LIVE TELEMETRY',
+        disk: 'DISK USAGE · LIVE TELEMETRY'
+    };
 
-        async function newFile() {
-            const name = prompt('File Name:');
-            if (name) {
-                const res = await API.post('/api/files/create', { path: currentDir + '/' + name });
-                if (res.success) browseFiles('.');
-                else alert('Error creating file');
-            }
-        }
-
-        async function deleteItem() {
-            if (!currentFile) return;
-            if (confirm(`Delete ${currentFile.split('/').pop()}?`)) {
-                const res = await API.post('/api/files/delete', { path: currentFile });
-                if (res.success) {
-                    document.getElementById('editor-area').value = '';
-                    document.getElementById('save-btn').classList.add('hidden');
-                    browseFiles('.');
-                }
-            }
-        }
-
-        function downloadFile() {
-            if (!currentFile) return;
-            window.open('/api/files/download?path=' + encodeURIComponent(currentFile));
-        }
-
-        async function saveFile() {
-            const res = await API.post('/api/files/write', { path: currentFile, content: document.getElementById('editor-area').value });
-            if (res.success) alert('File Saved');
-        }
-
-        async function refreshLogs() {
-            const raw = await fetch('/api/logs').then(r => r.text());
-            document.getElementById('logs-out').textContent = raw;
-            document.getElementById('logs-out').scrollTop = document.getElementById('logs-out').scrollHeight;
-        }
-
-        async function execCmd(command) {
-            const res = await API.post('/api/command', { command });
-            // This is the standalone terminal modal, if still used
-            const termOut = document.getElementById('term-out');
-            if (termOut) {
-                termOut.textContent += `\n$ ${command}\n${res.output || '(No output)'}\n`;
-                termOut.scrollTop = termOut.scrollHeight;
-            }
-            if (!document.getElementById('palette').classList.contains('hidden')) togglePalette();
-        }
-
-        function openTerminal() {
-            document.getElementById('term-modal').classList.remove('hidden');
-            document.getElementById('term-input').focus();
-            if (!document.getElementById('term-out').textContent) {
-                document.getElementById('term-out').textContent = "AiDash System Terminal v2.0\nType 'help' for available commands.\n";
-            }
-        }
-
-        function closeTerminal() {
-            document.getElementById('term-modal').classList.add('hidden');
-        }
-
-        document.getElementById('term-input').onkeydown = async function(e) {
-            if (e.key === 'Enter') {
-                const cmd = this.value.trim();
-                if (!cmd) return;
-                this.value = '';
-                if (cmd === 'clear') {
-                    document.getElementById('term-out').textContent = '';
-                } else if (cmd === 'exit') {
-                    closeTerminal();
-                } else {
-                    await execCmd(cmd);
-                }
+    function makeChartOptions(minimal = false) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: { legend: { display: false }, tooltip: {
+                backgroundColor: '#1a1a1a',
+                borderColor: '#303030',
+                borderWidth: 1,
+                titleColor: '#555',
+                bodyColor: '#d4d4d4',
+                titleFont: { family: 'IBM Plex Mono', size: 9 },
+                bodyFont: { family: 'IBM Plex Mono', size: 11 },
+            }},
+            scales: {
+                y: {
+                    display: !minimal,
+                    min: 0,
+                    grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
+                    ticks: { color: '#444', font: { family: 'IBM Plex Mono', size: 9 }, maxTicksLimit: 5 }
+                },
+                x: { display: false }
             }
         };
+    }
 
-        function togglePalette() { 
-            document.getElementById('palette').classList.toggle('hidden'); 
-            if(!document.getElementById('palette').classList.contains('hidden')) {
-                document.getElementById('pal-input').value = '';
-                document.getElementById('pal-input').focus();
-                document.querySelectorAll('.pal-item').forEach(el => el.style.display = 'block');
-            }
+    function initCharts() {
+        const miniCtx = document.getElementById('miniChart').getContext('2d');
+        miniChart = new Chart(miniCtx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)', data: [], fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1 }]},
+            options: makeChartOptions(true)
+        });
+
+        const mainCtx = document.getElementById('mainChart').getContext('2d');
+        mainChart = new Chart(mainCtx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'CPU', borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', data: [], fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5 }]},
+            options: makeChartOptions()
+        });
+
+        const drawerCtx = document.getElementById('drawerChart').getContext('2d');
+        drawerChart = new Chart(drawerCtx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'CPU', borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', data: [], fill: true, tension: 0.3, pointRadius: 2, borderWidth: 1.5 }]},
+            options: makeChartOptions()
+        });
+    }
+
+    function switchChartView(view) {
+        currentView = view;
+        const { color, bg } = viewColors[view];
+        document.getElementById('panel-chart-title').textContent = viewTitles[view];
+
+        [mainChart, miniChart].forEach(c => {
+            if (!c) return;
+            c.data.datasets[0].borderColor = color;
+            c.data.datasets[0].backgroundColor = bg;
+        });
+
+        document.querySelectorAll('.chip-btn').forEach((b, i) => {
+            b.classList.toggle('active', ['cpu','mem','processes','disk'][i] === view);
+        });
+    }
+
+    // ─── METRIC CARDS ───
+    function openDrawer(view) {
+        currentDrawerView = view;
+        const titles = { cpu: 'CPU ANALYSIS', mem: 'MEMORY ANALYSIS', processes: 'PROCESS ANALYSIS', disk: 'DISK ANALYSIS' };
+        document.getElementById('drawer-title').textContent = titles[view];
+
+        const { color, bg } = viewColors[view];
+        drawerChart.data.datasets[0].borderColor = color;
+        drawerChart.data.datasets[0].backgroundColor = bg;
+
+        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(view === 'processes' ? 'proc-card' : view + '-card').classList.add('active');
+
+        drawerOpen = true;
+        document.getElementById('metric-drawer').classList.add('open');
+        switchChartView(view);
+        setDrawerTab('history');
+    }
+
+    function closeDrawer() {
+        drawerOpen = false;
+        document.getElementById('metric-drawer').classList.remove('open');
+    }
+
+    function setDrawerTab(tab) {
+        document.getElementById('drawer-tab-history').style.display = tab === 'history' ? '' : 'none';
+        document.getElementById('drawer-tab-stats').style.display = tab === 'stats' ? '' : 'none';
+        document.getElementById('dtab-history').classList.toggle('active', tab === 'history');
+        document.getElementById('dtab-stats').classList.toggle('active', tab === 'stats');
+    }
+
+    function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
+
+    // ─── LOGIN ───
+    async function login() {
+        const data = await API.post('/api/login', {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        });
+        if (data.success) {
+            localStorage.setItem('aidash_role', data.role);
+            localStorage.setItem('aidash_user', document.getElementById('username').value);
+            startApp();
+        } else {
+            document.getElementById('login-err').textContent = '// ' + data.message;
         }
+    }
 
-        window.onkeydown = e => { 
-            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { 
-                e.preventDefault(); 
-                togglePalette(); 
-            } 
-            if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-                e.preventDefault();
-                openTerminal();
-            }
-            if (e.key === 'Escape') {
-                togglePalette();
-                closeTerminal();
-            }
-        };
+    function startApp() {
+        document.getElementById('login-view').style.display = 'none';
+        document.getElementById('topbar').style.display = 'flex';
+        document.getElementById('main-dashboard').style.display = 'block';
+        document.getElementById('bar-user').textContent = localStorage.getItem('aidash_user') || '';
 
-        document.getElementById('pal-input').onkeyup = function(e) {
-            const q = this.value.toLowerCase();
-            document.querySelectorAll('.pal-item').forEach(el => {
-                el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none';
+        document.getElementById('hero-term-input').onkeydown = handleHeroInput;
+        initCharts();
+        refreshAll();
+        browseFiles('/host', true);
+        setInterval(refreshAll, 5000);
+    }
+
+    // ─── TERMINAL ───
+    function writeToHero(text, type = 'output') {
+        const out = document.getElementById('hero-term-out');
+        const div = document.createElement('div');
+        div.style.marginBottom = '2px';
+        if (type === 'cmd') {
+            div.innerHTML = `<span style="color:var(--green)">$</span> <span style="color:var(--text)">${text}</span>`;
+        } else if (type === 'danger') {
+            div.innerHTML = `<span class="term-alert-danger">${text}</span>`;
+        } else if (type === 'warning') {
+            div.innerHTML = `<span class="term-alert-warning">${text}</span>`;
+        } else {
+            div.innerHTML = `<span class="term-out">${text}</span>`;
+        }
+        out.appendChild(div);
+        document.getElementById('hero-term-body').scrollTop = 99999;
+    }
+
+    async function handleHeroInput(e) {
+        if (e.key !== 'Enter') return;
+        const val = e.target.value.trim();
+        if (!val) return;
+        e.target.value = '';
+        writeToHero(val, 'cmd');
+        document.getElementById('term-loading').classList.remove('hidden');
+        const bypass = val.includes('--force');
+        const cleanCmd = val.replace('--force', '').trim();
+        const res = await API.post('/api/command', { command: cleanCmd, bypass });
+        writeToHero(res.output || '(success, no output)');
+        if (res.intercepted) writeToHero('[INTERCEPTED] Safety guard active. Use --force to bypass.', 'warning');
+        document.getElementById('term-loading').classList.add('hidden');
+    }
+
+    // ─── MAIN REFRESH ───
+    let lastAlertCount = 0;
+    async function refreshAll() {
+        const [stats, disk, history, alerts, services] = await Promise.all([
+            API.get('/api/stats'), API.get('/api/disk'), API.get('/api/history'),
+            API.get('/api/alerts'), API.get('/api/services')
+        ]);
+
+        // Topbar
+        document.getElementById('bar-date').textContent = stats.metrics.date;
+        document.getElementById('bar-wifi').textContent = 'WIFI: ' + stats.metrics.wifi;
+        document.getElementById('bar-ip').textContent = stats.metrics.ipv4 || 'N/A';
+        const bat = stats.metrics.battery;
+        document.getElementById('bar-battery').textContent = bat !== 'N/A'
+            ? `${bat.isCharging ? 'CHG' : 'BAT'}: ${bat.percent}%`
+            : 'PWR: AC';
+
+        // Sidebar host
+        document.getElementById('host-title').textContent = (stats.os.hostname || 'NODE').toUpperCase();
+        const uptH = Math.floor(stats.uptime / 3600), uptM = Math.floor((stats.uptime % 3600) / 60);
+        document.getElementById('system-uptime').textContent = `up ${uptH}h ${uptM}m`;
+        document.getElementById('ip-display').textContent = stats.metrics.ipv4 || '';
+        document.getElementById('os-val').textContent = stats.os.platform || '—';
+        document.getElementById('os-ports').textContent = stats.metrics.ports || '—';
+
+        // CPU
+        const cpuPct = stats.metrics.cpuCores[0];
+        document.getElementById('cpu-val').textContent = cpuPct + '%';
+        document.getElementById('cpu-bar').style.width = cpuPct + '%';
+        document.getElementById('cpu-bar').style.background = cpuPct > 80 ? 'var(--red)' : cpuPct > 60 ? 'var(--amber)' : 'var(--green)';
+        document.getElementById('cpu-sub').textContent = `${stats.metrics.cpuCores.length || 1}-core`;
+        document.getElementById('sb-cpu').textContent = cpuPct + '%';
+        document.getElementById('sb-cpu-bar').style.width = cpuPct + '%';
+
+        // MEM
+        const memUsed = (stats.totalMem - stats.freeMem);
+        const memPct = (memUsed / stats.totalMem * 100).toFixed(0);
+        const memGB = (memUsed / 1024 / 1024 / 1024).toFixed(1);
+        document.getElementById('mem-val').textContent = memGB + ' GB';
+        document.getElementById('mem-bar').style.width = memPct + '%';
+        document.getElementById('mem-sub').textContent = 'SWAP: ' + (stats.metrics.swap || '0') + '%';
+        document.getElementById('sb-mem').textContent = memPct + '%';
+        document.getElementById('sb-mem-bar').style.width = memPct + '%';
+
+        // PROC
+        document.getElementById('proc-count-val').textContent = stats.metrics.totalProcesses;
+
+        // DISK
+        document.getElementById('disk-val').textContent = disk.main.usage;
+        document.getElementById('disk-bar').style.width = disk.main.usage;
+        document.getElementById('sb-disk').textContent = disk.main.usage;
+        document.getElementById('sb-disk-bar').style.width = disk.main.usage;
+
+        // Anomaly
+        const anomaly = stats.metrics.anomaly;
+        const aScore = anomaly.score;
+        const aColor = aScore > 75 ? 'var(--red)' : aScore > 40 ? 'var(--amber)' : 'var(--green)';
+        document.getElementById('ai-score').textContent = aScore + '%';
+        document.getElementById('ai-score').style.color = aColor;
+        document.getElementById('ai-bar').style.width = aScore + '%';
+        document.getElementById('ai-bar').style.background = aColor;
+        document.getElementById('ai-status-text').textContent = anomaly.status;
+        document.getElementById('ai-status-text').style.color = aColor;
+        document.getElementById('ai-why-text').textContent = anomaly.why || 'Monitoring...';
+        const tag = document.getElementById('anomaly-tag');
+        const termTag = document.getElementById('term-anomaly-tag');
+        tag.textContent = `● ${anomaly.status}`;
+        tag.style.color = aColor;
+        if (termTag) { termTag.textContent = `● ${anomaly.status}`; termTag.style.color = aColor; }
+
+        // Processes table
+        const procHtml = (services || []).map(p => `
+            <tr>
+                <td class="proc-name">${p.name}</td>
+                <td class="proc-pid">${p.pid}</td>
+                <td class="proc-cpu">${p.cpu}%</td>
+                <td class="proc-mem">${p.mem}%</td>
+                <td class="proc-cmd">${p.cmd || ''}</td>
+            </tr>
+        `).join('');
+        document.getElementById('proc-list').innerHTML = procHtml || '<tr><td colspan="5" style="padding:20px; text-align:center; color:var(--muted); font-family:var(--mono); font-size:10px;">no processes</td></tr>';
+
+        // Alerts → terminal
+        if (alerts && alerts.length > lastAlertCount) {
+            alerts.slice(lastAlertCount).forEach(a => {
+                writeToHero(`[${a.type}] ${a.message}`, a.severity === 'danger' ? 'danger' : 'warning');
             });
-        };
-
-        async function addNode() {
-            const name = document.getElementById('node-name').value;
-            const ip = document.getElementById('node-ip').value;
-            if (!name || !ip) return;
-            const res = await API.post('/api/nodes/add', { name, ip });
-            if (res.success) {
-                document.getElementById('node-name').value = '';
-                document.getElementById('node-ip').value = '';
-                refreshFleet();
-            }
+            lastAlertCount = alerts.length;
         }
 
-        async function refreshFleet() {
-            const nodes = await API.get('/api/nodes/stats');
-            const container = document.getElementById('fleet-container');
-            if (nodes.length === 0) {
-                container.innerHTML = '<div style="font-size:10px; opacity:0.5; padding:10px; text-align:center; border:1px solid var(--card-border); border-radius:8px;">No remote nodes adopted</div>';
-                return;
-            }
-            container.innerHTML = nodes.map(n => `
-                <div style="background:rgba(255,255,255,0.02); border:1px solid var(--card-border); padding:10px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <div style="font-size:12px; font-weight:800; color:var(--primary)">${n.name}</div>
-                        <div style="font-size:9px; opacity:0.5;">IP: ${n.ip}</div>
-                    </div>
-                    <div style="text-align:right">
-                        <div style="font-size:11px; font-weight:700; color:var(--success)">${n.mem} RAM</div>
-                        <div style="font-size:9px; opacity:0.5;">L: ${n.load}</div>
-                    </div>
+        // Charts
+        const histMap = { cpu: 'cpu', mem: 'mem', processes: 'processes', disk: 'disk' };
+        const histData = history[histMap[currentView]] || [];
+        const maxY = currentView === 'processes' ? Math.max(...histData, 10) : 100;
+
+        [mainChart, miniChart, drawerChart].forEach(c => {
+            if (!c) return;
+            c.data.labels = history.labels;
+            c.data.datasets[0].data = histData;
+            c.options.scales.y.max = maxY;
+            c.update('none');
+        });
+
+        // Drawer stats
+        const drawerRows = document.getElementById('drawer-stats-rows');
+        if (drawerRows) {
+            const rows = {
+                cpu: [['Current', cpuPct + '%'], ['Cores', stats.metrics.cpuCores.length || '—'], ['Kernel', stats.os.platform], ['Uptime', `${uptH}h ${uptM}m`]],
+                mem: [['Used', memGB + ' GB'], ['Usage', memPct + '%'], ['Swap', stats.metrics.swap + '%'], ['Total', (stats.totalMem/1024/1024/1024).toFixed(1) + ' GB']],
+                processes: [['Active', stats.metrics.totalProcesses], ['Uptime', `${uptH}h ${uptM}m`]],
+                disk: [['Usage', disk.main.usage], ['Path', disk.main.path || '/'], ['Avail', disk.main.available || '—'], ['Total', disk.main.size || '—']]
+            }[currentDrawerView] || [];
+            drawerRows.innerHTML = rows.map(([k,v]) => `<div class="stat-row"><span class="stat-key">${k}</span><span class="stat-val-text">${v}</span></div>`).join('');
+        }
+    }
+
+    // ─── FILE EXPLORER ───
+    function formatSize(bytes) {
+        if (!bytes) return '';
+        const k = 1024, s = ['B','K','M','G'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return (bytes / Math.pow(k, i)).toFixed(1) + s[i];
+    }
+
+    async function browseFiles(path = '/host', isAbsolute = false) {
+        if (isAbsolute) { currentDir = path; }
+        else if (path === '..') { const p = currentDir.split('/'); p.pop(); currentDir = p.join('/') || '/host'; }
+        else if (path !== '.') { currentDir = (currentDir === '.' ? '/host/' : currentDir + '/') + path; }
+        currentDir = currentDir.replace(/\/+/g, '/');
+        if (!currentDir.startsWith('/host')) currentDir = '/host';
+        document.getElementById('breadcrumbs').textContent = currentDir;
+
+        let items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+        if (items.error && currentDir === '/host') {
+            currentDir = '.';
+            document.getElementById('breadcrumbs').textContent = 'LOCAL ROOT';
+            items = await API.get('/api/files/list?path=' + encodeURIComponent(currentDir));
+        }
+
+        document.getElementById('file-list').innerHTML = (items.error ? [] : items).map(i => `
+            <div class="file-item" onclick="${i.isDir ? `browseFiles('${i.name}')` : `readFile('${i.name}')`}">
+                <span class="file-icon">${i.isDir ? '▸' : '·'}</span>
+                <span class="file-name">${i.name}</span>
+                ${!i.isDir ? `<span class="file-size">${formatSize(i.size)}</span>` : ''}
+            </div>
+        `).join('');
+
+        document.getElementById('download-btn').classList.add('hidden');
+        document.getElementById('delete-btn').classList.add('hidden');
+        currentFile = null;
+    }
+
+    async function readFile(name) {
+        const path = (currentDir === '/' ? '' : currentDir + '/') + name;
+        const res = await fetch('/api/files/read?path=' + encodeURIComponent(path));
+        if (res.ok) {
+            document.getElementById('editor-area').value = await res.text();
+            document.getElementById('editor-area').readOnly = false;
+            currentFile = path;
+            document.getElementById('save-btn').classList.remove('hidden');
+            document.getElementById('download-btn').classList.remove('hidden');
+            document.getElementById('delete-btn').classList.remove('hidden');
+            document.querySelectorAll('.file-item').forEach(el => {
+                el.classList.toggle('selected', el.querySelector('.file-name')?.textContent === name);
+            });
+        }
+    }
+
+    async function searchFiles() {
+        const q = document.getElementById('file-search').value.trim();
+        if (!q) return browseFiles('.', false);
+        const results = await API.get('/api/files/search?path=' + encodeURIComponent(currentDir) + '&q=' + encodeURIComponent(q));
+        if (!results || results.error) return;
+        document.getElementById('file-list').innerHTML = results.map(i => `
+            <div class="file-item" onclick="readFile('${i.name}')">
+                <span class="file-icon">·</span>
+                <span class="file-name">${i.name}</span>
+            </div>
+        `).join('');
+    }
+
+    async function newFolder() {
+        const name = prompt('Folder name:');
+        if (name) { const r = await API.post('/api/files/mkdir', { path: currentDir + '/' + name }); if (r.success) browseFiles('.'); }
+    }
+    async function newFile() {
+        const name = prompt('File name:');
+        if (name) { const r = await API.post('/api/files/create', { path: currentDir + '/' + name }); if (r.success) browseFiles('.'); }
+    }
+    async function deleteItem() {
+        if (!currentFile || !confirm('Delete ' + currentFile.split('/').pop() + '?')) return;
+        const r = await API.post('/api/files/delete', { path: currentFile });
+        if (r.success) { document.getElementById('editor-area').value = ''; document.getElementById('save-btn').classList.add('hidden'); browseFiles('.'); }
+    }
+    function downloadFile() { if (currentFile) window.open('/api/files/download?path=' + encodeURIComponent(currentFile)); }
+    async function saveFile() {
+        const r = await API.post('/api/files/write', { path: currentFile, content: document.getElementById('editor-area').value });
+        if (r.success) writeToHero(`[FS] Saved: ${currentFile}`);
+    }
+
+    // ─── HEALTH MODAL ───
+    function openHealthModal() {
+        document.getElementById('health-modal').classList.remove('hidden');
+        const whyText = document.getElementById('ai-why-text').textContent;
+        const zMatch = whyText.match(/Z:([\d.]+)|Z-Score:\s*([\d.]+)/);
+        const zVal = zMatch ? parseFloat(zMatch[1] || zMatch[2]) : 0;
+        const xPos = Math.min(380, 200 + (zVal * 40));
+        const yPos = 120 - (110 * Math.exp(-Math.pow(xPos - 200, 2) / 8000));
+        document.getElementById('z-needle').setAttribute('x1', xPos);
+        document.getElementById('z-needle').setAttribute('x2', xPos);
+        document.getElementById('z-needle').setAttribute('y1', yPos);
+        document.getElementById('z-dot').setAttribute('cx', xPos);
+        document.getElementById('z-dot').setAttribute('cy', yPos);
+        const zColor = zVal > 2.5 ? 'var(--red)' : zVal > 1.5 ? 'var(--amber)' : 'var(--green)';
+        document.getElementById('modal-z-val').textContent = zVal.toFixed(2);
+        document.getElementById('modal-z-val').style.color = zColor;
+        let p = 'Normal';
+        if (zVal > 3) p = 'Highly Improbable (<0.3%)';
+        else if (zVal > 2) p = 'Unlikely (<5%)';
+        else if (zVal > 1) p = 'Variance Noted';
+        document.getElementById('modal-p-val').textContent = p;
+        document.getElementById('modal-p-val').style.color = zColor;
+        document.getElementById('modal-explanation').textContent = whyText;
+    }
+    function closeHealthModal() { document.getElementById('health-modal').classList.add('hidden'); }
+
+    // ─── SECURITY MODAL ───
+    async function refreshFleet() {
+        const nodes = await API.get('/api/nodes/stats');
+        const container = document.getElementById('fleet-container');
+        if (!nodes || nodes.length === 0) {
+            container.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);padding:8px;border:1px dashed var(--border);">no nodes adopted</div>';
+            return;
+        }
+        container.innerHTML = nodes.map(n => `
+            <div class="fleet-node">
+                <div><div class="fleet-node-name">${n.name}</div><div class="fleet-node-ip">${n.ip}</div></div>
+                <div style="text-align:right"><div class="fleet-node-stat">${n.mem} RAM</div><div style="font-size:9px;color:var(--muted)">L: ${n.load}</div></div>
+            </div>
+        `).join('');
+    }
+
+    async function addNode() {
+        const name = document.getElementById('node-name').value;
+        const ip = document.getElementById('node-ip').value;
+        if (!name || !ip) return;
+        const r = await API.post('/api/nodes/add', { name, ip });
+        if (r.success) { document.getElementById('node-name').value = ''; document.getElementById('node-ip').value = ''; refreshFleet(); }
+    }
+
+    function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); refreshFleet(); }
+    function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
+
+    let selectedSSID = null;
+    async function scanWifi() {
+        const c = document.getElementById('wifi-list-container');
+        c.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);padding:8px;">Scanning...</div>';
+        const list = await API.get('/api/wifi/scan');
+        if (!list || list.length === 0) {
+            c.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--red);padding:8px;">No networks found</div>';
+        } else {
+            c.innerHTML = list.map(n => `
+                <div class="wifi-item" onclick="prepareJoin('${n.ssid}')">
+                    <span class="wifi-ssid">${n.ssid}</span>
+                    <span class="wifi-signal">${n.signal}</span>
                 </div>
             `).join('');
         }
+    }
 
-        function openSecurityModal() { 
-            document.getElementById('sec-modal').classList.remove('hidden'); 
-            refreshFleet();
+    function prepareJoin(ssid) {
+        selectedSSID = ssid;
+        document.getElementById('wifi-list-container').classList.add('hidden');
+        document.getElementById('wifi-join-form').classList.remove('hidden');
+        document.getElementById('joining-ssid').textContent = 'JOINING: ' + ssid;
+        document.getElementById('wifi-pass').value = '';
+        document.getElementById('wifi-pass').focus();
+    }
+    function cancelJoin() {
+        selectedSSID = null;
+        document.getElementById('wifi-list-container').classList.remove('hidden');
+        document.getElementById('wifi-join-form').classList.add('hidden');
+    }
+    async function connectWifi() {
+        if (!selectedSSID) return;
+        const btn = document.getElementById('join-btn');
+        const pass = document.getElementById('wifi-pass').value;
+        btn.textContent = 'AUTHENTICATING...';
+        btn.disabled = true;
+        const res = await API.post('/api/wifi/connect', { ssid: selectedSSID, password: pass });
+        if (res.success) { alert('Connection initiated. Dashboard may disconnect briefly.'); cancelJoin(); closeSecurityModal(); }
+        else { alert('Failed: ' + res.output); btn.textContent = 'RETRY'; btn.disabled = false; }
+    }
+
+    // ─── FULL TERMINAL ───
+    async function execCmd(command) {
+        const res = await API.post('/api/command', { command });
+        const termOut = document.getElementById('term-out');
+        if (termOut) { termOut.textContent += `\n$ ${command}\n${res.output || '(no output)'}\n`; termOut.scrollTop = termOut.scrollHeight; }
+        if (!document.getElementById('palette').classList.contains('hidden')) togglePalette();
+    }
+    function openTerminal() {
+        document.getElementById('term-modal').classList.remove('hidden');
+        document.getElementById('term-input').focus();
+        if (!document.getElementById('term-out').textContent) document.getElementById('term-out').textContent = 'AiDash Terminal v2\n';
+    }
+    function closeTerminal() { document.getElementById('term-modal').classList.add('hidden'); }
+    document.getElementById('term-input').onkeydown = async function(e) {
+        if (e.key !== 'Enter') return;
+        const cmd = this.value.trim();
+        if (!cmd) return;
+        this.value = '';
+        if (cmd === 'clear') document.getElementById('term-out').textContent = '';
+        else if (cmd === 'exit') closeTerminal();
+        else await execCmd(cmd);
+    };
+
+    // ─── CMD PALETTE ───
+    function togglePalette() {
+        const p = document.getElementById('palette');
+        p.classList.toggle('hidden');
+        if (!p.classList.contains('hidden')) {
+            document.getElementById('pal-input').value = '';
+            document.getElementById('pal-input').focus();
+            document.querySelectorAll('.pal-item').forEach(el => el.style.display = 'flex');
         }
-        function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
+    }
+    document.getElementById('pal-input').onkeyup = function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.pal-item').forEach(el => {
+            el.style.display = el.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
+        });
+    };
 
-        let selectedSSID = null;
+    // ─── PASSWORD ───
+    async function changePassword() {
+        const r = await API.post('/api/user/password', { username: localStorage.getItem('aidash_user'), oldPassword: document.getElementById('old-pass').value, newPassword: document.getElementById('new-pass').value });
+        writeToHero(r.success ? '[AUTH] Password updated.' : '[AUTH] Error: ' + r.message, r.success ? 'output' : 'danger');
+    }
 
-        async function scanWifi() {
-            const container = document.getElementById('wifi-list-container');
-            container.innerHTML = '<div style="font-size:12px; opacity:0.5; padding:20px; text-align:center;">Scanning radio frequencies...</div>';
-            const list = await API.get('/api/wifi/scan');
-            
-            if (!list || list.length === 0) {
-                container.innerHTML = '<div style="color:var(--danger); font-size:12px; padding:20px; text-align:center;">No networks in range</div>';
-            } else {
-                container.innerHTML = list.map(n => `
-                    <div class="wifi-item" onclick="prepareJoin('${n.ssid}')" style="background:rgba(255,255,255,0.03); border:1px solid var(--card-border); padding:12px 16px; border-radius:8px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-weight:700; font-size:13px;">${n.ssid}</div>
-                            <div style="font-size:10px; opacity:0.5; text-transform:uppercase;">${n.signal}</div>
-                        </div>
-                        <span style="opacity:0.3;">📶</span>
-                    </div>
-                `).join('');
-            }
+    function logout() { localStorage.clear(); location.reload(); }
+
+    // ─── GLOBAL KEYS ───
+    window.onkeydown = e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); togglePalette(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 't') { e.preventDefault(); openTerminal(); }
+        if (e.key === 'Escape') {
+            document.getElementById('palette').classList.add('hidden');
+            closeTerminal();
+            closeDrawer();
         }
+    };
 
-        function prepareJoin(ssid) {
-            selectedSSID = ssid;
-            document.getElementById('wifi-list-container').classList.add('hidden');
-            document.getElementById('wifi-join-form').classList.remove('hidden');
-            document.getElementById('joining-ssid').textContent = `JOINING: ${ssid}`;
-            document.getElementById('wifi-pass').value = '';
-            document.getElementById('wifi-pass').focus();
-        }
-
-        function cancelJoin() {
-            selectedSSID = null;
-            document.getElementById('wifi-list-container').classList.remove('hidden');
-            document.getElementById('wifi-join-form').classList.add('hidden');
-        }
-
-        async function connectWifi() {
-            if (!selectedSSID) return;
-            const btn = document.getElementById('join-btn');
-            const pass = document.getElementById('wifi-pass').value;
-            
-            btn.textContent = 'AUTHENTICATING...';
-            btn.disabled = true;
-            
-            const res = await API.post('/api/wifi/connect', { ssid: selectedSSID, password: pass });
-            
-            if (res.success) {
-                alert('Connection sequence initiated. The dashboard may disconnect for a moment.');
-                cancelJoin();
-                closeSecurityModal();
-            } else {
-                alert('Failed to connect: ' + res.output);
-                btn.textContent = 'RETRY CONNECTION';
-                btn.disabled = false;
-            }
-        }
-
-        async function changePassword() {
-            const res = await API.post('/api/user/password', { username: localStorage.getItem('aidash_user'), oldPassword: document.getElementById('old-pass').value, newPassword: document.getElementById('new-pass').value });
-            alert(res.success ? 'Updated' : 'Error');
-        }
-
-        function logout() { localStorage.clear(); location.reload(); }
-        if(localStorage.getItem('aidash_role')) startApp();
-    </script>
+    // ─── BOOT ───
+    if (localStorage.getItem('aidash_role')) startApp();
+</script>
 </body>
 </html>
