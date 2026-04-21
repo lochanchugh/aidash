@@ -123,14 +123,6 @@
         .nav-item.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
         .nav-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
-        .sidebar-metrics { padding: 16px; border-bottom: 1px solid var(--border); display: grid; gap: 10px; }
-        .mini-metric { display: flex; flex-direction: column; gap: 4px; }
-        .mini-metric-header { display: flex; justify-content: space-between; align-items: center; }
-        .mini-metric-name { font-size: 9px; color: var(--muted); letter-spacing: 0.1em; }
-        .mini-metric-val { font-size: 12px; font-weight: 600; color: var(--text); }
-        .mini-bar { height: 2px; background: var(--dim); border-radius: 1px; overflow: hidden; }
-        .mini-bar-fill { height: 100%; background: var(--green); border-radius: 1px; transition: width 0.4s ease; }
-
         .sidebar-anomaly { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
         .sidebar-anomaly:hover { background: var(--surface2); }
         .anomaly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -667,11 +659,10 @@
     <div class="topbar-left">
         <span class="topbar-logo">AIDASH</span>
         <span class="topbar-stat" id="bar-date"></span>
-        <span class="topbar-stat">IP: <span id="bar-ip">—</span></span>
     </div>
     <div class="topbar-right">
         <span id="bar-wifi">WIFI: —</span>
-        <span id="bar-battery">PWR: AC</span>
+        <span id="bar-battery">POWER: AC</span>
         <span id="bar-user"></span>
     </div>
 </div>
@@ -688,41 +679,11 @@
         <div class="sidebar-sub" id="system-uptime">uptime —</div>
       </div>
 
-      <nav style="padding: 8px 0;">
-        <div class="nav-item active" onclick="scrollToSection('metrics')"><span class="nav-dot"></span>Metrics</div>
-        <div class="nav-item" onclick="scrollToSection('terminal')"><span class="nav-dot"></span>Terminal</div>
-        <div class="nav-item" onclick="scrollToSection('processes')"><span class="nav-dot"></span>Processes</div>
-        <div class="nav-item" onclick="scrollToSection('files')"><span class="nav-dot"></span>File Explorer</div>
-        <div class="nav-item" onclick="openSecurityModal()"><span class="nav-dot"></span>Fleet / WiFi</div>
+      <nav style="padding: 8px 0; flex: 1;">
+        <div class="nav-item active" id="nav-metrics" onclick="scrollToSection('metrics')"><span class="nav-dot"></span>Metrics</div>
+        <div class="nav-item" id="nav-terminal" onclick="scrollToSection('terminal')"><span class="nav-dot"></span>Terminal</div>
+        <div class="nav-item" id="nav-files" onclick="scrollToSection('files')"><span class="nav-dot"></span>File Explorer</div>
       </nav>
-
-      <!-- Mini metrics -->
-      <div class="sidebar-metrics">
-        <div class="mini-metric">
-          <div class="mini-metric-header">
-            <span class="mini-metric-name">CPU</span>
-            <span class="mini-metric-val" id="sb-cpu">—</span>
-          </div>
-          <div class="mini-bar"><div class="mini-bar-fill" id="sb-cpu-bar" style="width:0%"></div></div>
-        </div>
-        <div class="mini-metric">
-          <div class="mini-metric-header">
-            <span class="mini-metric-name">MEM</span>
-            <span class="mini-metric-val" id="sb-mem">—</span>
-          </div>
-          <div class="mini-bar"><div class="mini-bar-fill" id="sb-mem-bar" style="width:0%; background:var(--blue)"></div></div>
-        </div>
-        <div class="mini-metric">
-          <div class="mini-metric-header">
-            <span class="mini-metric-name">DISK</span>
-            <span class="mini-metric-val" id="sb-disk">—</span>
-          </div>
-          <div class="mini-bar"><div class="mini-bar-fill" id="sb-disk-bar" style="width:0%; background:var(--amber)"></div></div>
-        </div>
-        <div class="mini-chart-wrap">
-          <canvas id="miniChart"></canvas>
-        </div>
-      </div>
 
       <!-- Anomaly engine -->
       <div class="sidebar-anomaly" onclick="openHealthModal()" title="Click for XAI analysis">
@@ -737,16 +698,18 @@
         <div class="anomaly-why" id="ai-why-text">Establishing baseline...</div>
       </div>
 
-      <!-- Info tiles -->
-      <div class="info-tiles">
-        <div class="info-tile"><span class="info-tile-key">KERNEL</span><span class="info-tile-val" id="os-val">—</span></div>
-        <div class="info-tile"><span class="info-tile-key">PORTS</span><span class="info-tile-val" id="os-ports">—</span></div>
-        <div class="info-tile"><span class="info-tile-key" id="anomaly-tag" style="color:var(--green)">● NOMINAL</span><span class="info-tile-val"></span></div>
+      <!-- Info tiles restored -->
+      <div class="sidebar-section">
+        <div style="display:grid; gap:8px; font-size:10px;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted)">KERNEL</span><span id="os-val">—</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted)">PORTS</span><span id="os-ports">—</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--muted)">IP</span><span id="ip-display">—</span></div>
+        </div>
       </div>
 
       <div class="sidebar-footer">
         <button class="sidebar-btn" onclick="togglePalette()">⌘  CMD PALETTE  <span style="margin-left:auto; font-size:9px; color:var(--dim)">ctrl+k</span></button>
-        <button class="sidebar-btn" onclick="openSecurityModal()">⊞  FLEET COMMANDER</button>
+        <button class="sidebar-btn" onclick="openSecurityModal()">⊞  SETTINGS</button>
         <button class="sidebar-btn danger" onclick="logout()">⏻  LOGOUT</button>
       </div>
     </aside>
@@ -756,33 +719,29 @@
 
       <!-- METRIC CARDS -->
       <div class="metrics-row">
-        <div class="metric-card active" id="cpu-card" onclick="openDrawer('cpu')">
+        <div class="metric-card active" id="cpu-card" onclick="switchChartView('cpu')">
           <div class="metric-card-label">CPU LOAD</div>
           <div class="metric-card-val" id="cpu-val">0%</div>
           <div class="metric-card-sub" id="cpu-sub">—</div>
           <div class="metric-bar"><div class="metric-bar-fill" id="cpu-bar" style="width:0%; background:var(--green)"></div></div>
-          <span class="metric-card-hint">EXPAND ↗</span>
         </div>
-        <div class="metric-card" id="mem-card" onclick="openDrawer('mem')">
+        <div class="metric-card" id="mem-card" onclick="switchChartView('mem')">
           <div class="metric-card-label">MEMORY</div>
           <div class="metric-card-val" id="mem-val">0.0 GB</div>
           <div class="metric-card-sub" id="mem-sub">SWAP: 0%</div>
           <div class="metric-bar"><div class="metric-bar-fill" id="mem-bar" style="width:0%; background:var(--blue)"></div></div>
-          <span class="metric-card-hint">EXPAND ↗</span>
         </div>
-        <div class="metric-card" id="proc-card" onclick="openDrawer('processes')">
+        <div class="metric-card" id="proc-card" onclick="switchChartView('processes')">
           <div class="metric-card-label">PROCESSES</div>
           <div class="metric-card-val" id="proc-count-val">0</div>
           <div class="metric-card-sub">ACTIVE IN /PROC</div>
           <div class="metric-bar" style="height:0"></div>
-          <span class="metric-card-hint">EXPAND ↗</span>
         </div>
-        <div class="metric-card" id="disk-card" onclick="openDrawer('disk')">
+        <div class="metric-card" id="disk-card" onclick="switchChartView('disk')">
           <div class="metric-card-label">STORAGE</div>
           <div class="metric-card-val" id="disk-val">0%</div>
           <div class="metric-card-sub" id="disk-sub">—</div>
           <div class="metric-bar"><div class="metric-bar-fill" id="disk-bar" style="width:0%; background:var(--amber)"></div></div>
-          <span class="metric-card-hint">EXPAND ↗</span>
         </div>
       </div>
 
@@ -791,13 +750,13 @@
         <div class="chart-panel-header">
           <div class="chart-panel-title">
             <span class="live-dot"></span>
-            <span id="panel-chart-title">CPU LOAD · LIVE TELEMETRY</span>
+            <span id="panel-chart-title">LIVE TELEMETRY · CPU LOAD</span>
           </div>
           <div class="chart-panel-actions">
-            <button class="chip-btn active" onclick="switchChartView('cpu')">CPU</button>
-            <button class="chip-btn" onclick="switchChartView('mem')">MEM</button>
-            <button class="chip-btn" onclick="switchChartView('processes')">PROC</button>
-            <button class="chip-btn" onclick="switchChartView('disk')">DISK</button>
+            <button class="chip-btn active" onclick="setTimeFilter('1m')">1M</button>
+            <button class="chip-btn" onclick="setTimeFilter('5m')">5M</button>
+            <button class="chip-btn" onclick="setTimeFilter('15m')">15M</button>
+            <button class="chip-btn" onclick="setTimeFilter('1h')">1H</button>
           </div>
         </div>
         <div class="chart-body">
@@ -806,17 +765,12 @@
       </div>
 
       <!-- TERMINAL + PROCESSES -->
-      <div class="panels-row" id="terminal">
+      <div class="panels-row">
         <!-- TERMINAL -->
-        <div class="panel">
+        <div class="panel" id="terminal">
           <div class="panel-header">
-            <span class="panel-title">HERO_TERMINAL_V2</span>
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span id="term-anomaly-tag" style="font-family:var(--mono);font-size:9px;color:var(--green)">● NOMINAL</span>
-              <span style="font-family:var(--mono);font-size:9px;color:var(--muted)" id="ip-display"></span>
-            </div>
-          </div>
-          <div class="terminal-body" id="hero-term-body">
+            <span class="panel-title">TERMINAL</span>
+          </div>          <div class="terminal-body" id="hero-term-body">
             <div style="color:var(--green); margin-bottom:4px; font-family:var(--mono); font-size:11px;">[INIT] AiDash intelligence layer active.</div>
             <div id="hero-term-out"></div>
           </div>
@@ -879,30 +833,6 @@
   </div>
 </div>
 
-<!-- ═══════════ DRAWER (metric detail) ═══════════ -->
-<div id="metric-drawer" class="drawer">
-  <div class="drawer-header">
-    <span class="drawer-title" id="drawer-title">CPU DETAIL</span>
-    <button class="modal-close" onclick="closeDrawer()">×</button>
-  </div>
-  <div class="drawer-tabs">
-    <div class="drawer-tab active" id="dtab-history" onclick="setDrawerTab('history')">HISTORY</div>
-    <div class="drawer-tab" id="dtab-stats" onclick="setDrawerTab('stats')">STATS</div>
-  </div>
-  <div class="drawer-body">
-    <div id="drawer-tab-history">
-      <div class="drawer-chart">
-        <canvas id="drawerChart"></canvas>
-      </div>
-      <div id="drawer-stats-rows"></div>
-    </div>
-    <div id="drawer-tab-stats" style="display:none">
-      <!-- extra stats panel -->
-      <div id="drawer-extra"></div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══════════ HEALTH / XAI MODAL ═══════════ -->
 <div id="health-modal" class="overlay hidden" onclick="if(event.target===this)closeHealthModal()">
   <div class="modal-box" style="width:480px;">
@@ -954,7 +884,7 @@
 <div id="sec-modal" class="overlay hidden" onclick="if(event.target===this)closeSecurityModal()">
   <div class="modal-box" style="width:680px;">
     <div class="modal-header">
-      FLEET COMMANDER &amp; SECURITY HUB
+      SETTINGS
       <button class="modal-close" onclick="closeSecurityModal()">×</button>
     </div>
     <div class="modal-body">
@@ -1044,7 +974,19 @@
         async get(url) { return fetch(url).then(r => r.json()); }
     };
 
-    let miniChart, mainChart, drawerChart;
+    let mainChart, currentTimeFilter = '1m';
+
+    function setTimeFilter(f) {
+        currentTimeFilter = f;
+        document.querySelectorAll('.chip-btn').forEach(b => b.classList.toggle('active', b.textContent === f.toUpperCase()));
+        refreshAll();
+    }
+
+    function getFilteredHistory(data) {
+        const counts = { '1m': 12, '5m': 60, '15m': 180, '1h': 720 };
+        const limit = counts[currentTimeFilter] || 12;
+        return data.slice(-limit);
+    }
     let currentDir = '/host', currentFile = null, currentView = 'cpu';
     let drawerOpen = false, currentDrawerView = 'cpu';
 
@@ -1056,10 +998,10 @@
         disk:      { color: '#2dd4bf', bg: 'rgba(45,212,191,0.06)' },
     };
     const viewTitles = {
-        cpu: 'CPU LOAD · LIVE TELEMETRY',
-        mem: 'MEMORY USAGE · LIVE TELEMETRY',
-        processes: 'PROCESS COUNT · LIVE TELEMETRY',
-        disk: 'DISK USAGE · LIVE TELEMETRY'
+        cpu: 'LIVE TELEMETRY · CPU LOAD',
+        mem: 'LIVE TELEMETRY · MEMORY USAGE',
+        processes: 'LIVE TELEMETRY · PROCESS COUNT',
+        disk: 'LIVE TELEMETRY · DISK USAGE'
     };
 
     function makeChartOptions(minimal = false) {
@@ -1089,24 +1031,10 @@
     }
 
     function initCharts() {
-        const miniCtx = document.getElementById('miniChart').getContext('2d');
-        miniChart = new Chart(miniCtx, {
-            type: 'line',
-            data: { labels: [], datasets: [{ borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.05)', data: [], fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1 }]},
-            options: makeChartOptions(true)
-        });
-
         const mainCtx = document.getElementById('mainChart').getContext('2d');
         mainChart = new Chart(mainCtx, {
             type: 'line',
-            data: { labels: [], datasets: [{ label: 'CPU', borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', data: [], fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5 }]},
-            options: makeChartOptions()
-        });
-
-        const drawerCtx = document.getElementById('drawerChart').getContext('2d');
-        drawerChart = new Chart(drawerCtx, {
-            type: 'line',
-            data: { labels: [], datasets: [{ label: 'CPU', borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.06)', data: [], fill: true, tension: 0.3, pointRadius: 2, borderWidth: 1.5 }]},
+            data: { labels: [], datasets: [{ label: 'CPU', borderColor: '#4ade80', backgroundColor: 'rgba(74, 222, 128, 0.06)', data: [], fill: true, tension: 0.3, pointRadius: 0, borderWidth: 1.5 }]},
             options: makeChartOptions()
         });
     }
@@ -1116,49 +1044,37 @@
         const { color, bg } = viewColors[view];
         document.getElementById('panel-chart-title').textContent = viewTitles[view];
 
-        [mainChart, miniChart].forEach(c => {
-            if (!c) return;
-            c.data.datasets[0].borderColor = color;
-            c.data.datasets[0].backgroundColor = bg;
-        });
+        if (mainChart) {
+            mainChart.data.datasets[0].borderColor = color;
+            mainChart.data.datasets[0].backgroundColor = bg;
+        }
 
-        document.querySelectorAll('.chip-btn').forEach((b, i) => {
-            b.classList.toggle('active', ['cpu','mem','processes','disk'][i] === view);
-        });
+        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active'));
+        const cardId = view === 'processes' ? 'proc-card' : view + '-card';
+        document.getElementById(cardId)?.classList.add('active');
     }
 
     // ─── METRIC CARDS ───
-    function openDrawer(view) {
-        currentDrawerView = view;
-        const titles = { cpu: 'CPU ANALYSIS', mem: 'MEMORY ANALYSIS', processes: 'PROCESS ANALYSIS', disk: 'DISK ANALYSIS' };
-        document.getElementById('drawer-title').textContent = titles[view];
-
-        const { color, bg } = viewColors[view];
-        drawerChart.data.datasets[0].borderColor = color;
-        drawerChart.data.datasets[0].backgroundColor = bg;
-
-        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('active'));
-        document.getElementById(view === 'processes' ? 'proc-card' : view + '-card').classList.add('active');
-
-        drawerOpen = true;
-        document.getElementById('metric-drawer').classList.add('open');
-        switchChartView(view);
-        setDrawerTab('history');
+    function setActiveNav(id) {
+        document.querySelectorAll('.nav-item[id^="nav-"]').forEach(n => {
+            n.classList.toggle('active', n.id === 'nav-' + id);
+        });
     }
 
-    function closeDrawer() {
-        drawerOpen = false;
-        document.getElementById('metric-drawer').classList.remove('open');
+    function scrollToSection(id) { 
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setActiveNav(id);
     }
 
-    function setDrawerTab(tab) {
-        document.getElementById('drawer-tab-history').style.display = tab === 'history' ? '' : 'none';
-        document.getElementById('drawer-tab-stats').style.display = tab === 'stats' ? '' : 'none';
-        document.getElementById('dtab-history').classList.toggle('active', tab === 'history');
-        document.getElementById('dtab-stats').classList.toggle('active', tab === 'stats');
-    }
-
-    function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }); }
+    window.addEventListener('scroll', () => {
+        const sections = ['metrics', 'terminal', 'files'];
+        let current = 'metrics';
+        for (const s of sections) {
+            const el = document.getElementById(s);
+            if (el && el.getBoundingClientRect().top < 150) current = s;
+        }
+        setActiveNav(current);
+    });
 
     // ─── LOGIN ───
     async function login() {
@@ -1232,19 +1148,24 @@
         // Topbar
         document.getElementById('bar-date').textContent = stats.metrics.date;
         document.getElementById('bar-wifi').textContent = 'WIFI: ' + stats.metrics.wifi;
-        document.getElementById('bar-ip').textContent = stats.metrics.ipv4 || 'N/A';
+        const barIp = document.getElementById('bar-ip');
+        if (barIp) barIp.textContent = stats.metrics.ipv4 || 'N/A';
         const bat = stats.metrics.battery;
         document.getElementById('bar-battery').textContent = bat !== 'N/A'
-            ? `${bat.isCharging ? 'CHG' : 'BAT'}: ${bat.percent}%`
-            : 'PWR: AC';
-
-        // Sidebar host
-        document.getElementById('host-title').textContent = (stats.os.hostname || 'NODE').toUpperCase();
+            ? `${bat.isCharging ? 'CHG' : 'BATTERY'}: ${bat.percent}%`
+            : 'POWER: AC';
+        // Sidebar host (or removed)
+        const hostTitle = document.getElementById('host-title');
+        if (hostTitle) hostTitle.textContent = (stats.os.hostname || 'NODE').toUpperCase();
         const uptH = Math.floor(stats.uptime / 3600), uptM = Math.floor((stats.uptime % 3600) / 60);
-        document.getElementById('system-uptime').textContent = `up ${uptH}h ${uptM}m`;
-        document.getElementById('ip-display').textContent = stats.metrics.ipv4 || '';
-        document.getElementById('os-val').textContent = stats.os.platform || '—';
-        document.getElementById('os-ports').textContent = stats.metrics.ports || '—';
+        const sysUptime = document.getElementById('system-uptime');
+        if (sysUptime) sysUptime.textContent = `up ${uptH}h ${uptM}m`;
+        const ipDisp = document.getElementById('ip-display');
+        if (ipDisp) ipDisp.textContent = stats.metrics.ipv4 || '';
+        const osVal = document.getElementById('os-val');
+        if (osVal) osVal.textContent = stats.os.platform || '—';
+        const osPorts = document.getElementById('os-ports');
+        if (osPorts) osPorts.textContent = stats.metrics.ports || '—';
 
         // CPU
         const cpuPct = stats.metrics.cpuCores[0];
@@ -1252,8 +1173,6 @@
         document.getElementById('cpu-bar').style.width = cpuPct + '%';
         document.getElementById('cpu-bar').style.background = cpuPct > 80 ? 'var(--red)' : cpuPct > 60 ? 'var(--amber)' : 'var(--green)';
         document.getElementById('cpu-sub').textContent = `${stats.metrics.cpuCores.length || 1}-core`;
-        document.getElementById('sb-cpu').textContent = cpuPct + '%';
-        document.getElementById('sb-cpu-bar').style.width = cpuPct + '%';
 
         // MEM
         const memUsed = (stats.totalMem - stats.freeMem);
@@ -1262,8 +1181,6 @@
         document.getElementById('mem-val').textContent = memGB + ' GB';
         document.getElementById('mem-bar').style.width = memPct + '%';
         document.getElementById('mem-sub').textContent = 'SWAP: ' + (stats.metrics.swap || '0') + '%';
-        document.getElementById('sb-mem').textContent = memPct + '%';
-        document.getElementById('sb-mem-bar').style.width = memPct + '%';
 
         // PROC
         document.getElementById('proc-count-val').textContent = stats.metrics.totalProcesses;
@@ -1271,8 +1188,6 @@
         // DISK
         document.getElementById('disk-val').textContent = disk.main.usage;
         document.getElementById('disk-bar').style.width = disk.main.usage;
-        document.getElementById('sb-disk').textContent = disk.main.usage;
-        document.getElementById('sb-disk-bar').style.width = disk.main.usage;
 
         // Anomaly
         const anomaly = stats.metrics.anomaly;
@@ -1280,16 +1195,14 @@
         const aColor = aScore > 75 ? 'var(--red)' : aScore > 40 ? 'var(--amber)' : 'var(--green)';
         document.getElementById('ai-score').textContent = aScore + '%';
         document.getElementById('ai-score').style.color = aColor;
-        document.getElementById('ai-bar').style.width = aScore + '%';
-        document.getElementById('ai-bar').style.background = aColor;
         document.getElementById('ai-status-text').textContent = anomaly.status;
         document.getElementById('ai-status-text').style.color = aColor;
+        const aiBar = document.getElementById('ai-bar');
+        if (aiBar) {
+            aiBar.style.width = aScore + '%';
+            aiBar.style.background = aColor;
+        }
         document.getElementById('ai-why-text').textContent = anomaly.why || 'Monitoring...';
-        const tag = document.getElementById('anomaly-tag');
-        const termTag = document.getElementById('term-anomaly-tag');
-        tag.textContent = `● ${anomaly.status}`;
-        tag.style.color = aColor;
-        if (termTag) { termTag.textContent = `● ${anomaly.status}`; termTag.style.color = aColor; }
 
         // Processes table
         const procHtml = (services || []).map(p => `
@@ -1313,20 +1226,22 @@
 
         // Charts
         const histMap = { cpu: 'cpu', mem: 'mem', processes: 'processes', disk: 'disk' };
-        const histData = history[histMap[currentView]] || [];
+        const filteredLabels = getFilteredHistory(history.labels);
+        
+        // Update main chart
+        const histData = getFilteredHistory(history[histMap[currentView]] || []);
         const maxY = currentView === 'processes' ? Math.max(...histData, 10) : 100;
 
-        [mainChart, miniChart, drawerChart].forEach(c => {
-            if (!c) return;
-            c.data.labels = history.labels;
-            c.data.datasets[0].data = histData;
-            c.options.scales.y.max = maxY;
-            c.update('none');
-        });
+        if (mainChart) {
+            mainChart.data.labels = filteredLabels;
+            mainChart.data.datasets[0].data = histData;
+            mainChart.options.scales.y.max = maxY;
+            mainChart.update('none');
+        }
 
         // Drawer stats
         const drawerRows = document.getElementById('drawer-stats-rows');
-        if (drawerRows) {
+        if (drawerRows && drawerOpen) {
             const rows = {
                 cpu: [['Current', cpuPct + '%'], ['Cores', stats.metrics.cpuCores.length || '—'], ['Kernel', stats.os.platform], ['Uptime', `${uptH}h ${uptM}m`]],
                 mem: [['Used', memGB + ' GB'], ['Usage', memPct + '%'], ['Swap', stats.metrics.swap + '%'], ['Total', (stats.totalMem/1024/1024/1024).toFixed(1) + ' GB']],
