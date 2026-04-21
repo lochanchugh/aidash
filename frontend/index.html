@@ -47,7 +47,9 @@
         
         /* Stats Styling */
         .stats-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
-        .stat-card { padding: 18px; border-radius: 12px; border: 1px solid var(--card-border); background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0)); }
+        .stat-card { padding: 18px; border-radius: 12px; border: 1px solid var(--card-border); background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0)); cursor: pointer; }
+        .stat-card:hover { border-color: var(--primary-glow); transform: translateY(-2px); }
+        .stat-card.active { border-color: var(--primary); background: rgba(59, 130, 246, 0.05); }
         .stat-val { font-size: 32px; font-weight: 900; letter-spacing: -0.04em; }
         .stat-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
 
@@ -137,6 +139,42 @@
         </div>
     </div>
 
+    <!-- Detailed Metric Modal -->
+    <div id="chart-modal" class="modal hidden" onclick="if(event.target===this) closeChartModal()">
+        <div class="glass-card" style="width: 900px; height: 500px; padding: 32px; border-color: var(--primary); display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div>
+                    <h2 id="modal-chart-title" style="margin: 0; font-size: 18px; letter-spacing: 0.1em; color: var(--primary);">METRIC HISTORY</h2>
+                    <p id="modal-chart-desc" style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Real-time telemetry distribution</p>
+                </div>
+                <button class="secondary" onclick="closeChartModal()">×</button>
+            </div>
+            
+            <div style="flex-grow: 1; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; border: 1px solid var(--card-border);">
+                <canvas id="modalChartCanvas"></canvas>
+            </div>
+            
+            <div style="margin-top: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                <div class="stat-card" style="padding: 12px;" onclick="switchView('cpu')">
+                    <div style="font-size: 9px; color: var(--text-dim);">CPU</div>
+                    <div id="modal-val-cpu" style="font-size: 16px; font-weight: 800;">0%</div>
+                </div>
+                <div class="stat-card" style="padding: 12px;" onclick="switchView('mem')">
+                    <div style="font-size: 9px; color: var(--text-dim);">MEM</div>
+                    <div id="modal-val-mem" style="font-size: 16px; font-weight: 800;">0%</div>
+                </div>
+                <div class="stat-card" style="padding: 12px;" onclick="switchView('processes')">
+                    <div style="font-size: 9px; color: var(--text-dim);">PROC</div>
+                    <div id="modal-val-processes" style="font-size: 16px; font-weight: 800;">0</div>
+                </div>
+                <div class="stat-card" style="padding: 12px;" onclick="switchView('disk')">
+                    <div style="font-size: 9px; color: var(--text-dim);">DISK</div>
+                    <div id="modal-val-disk" style="font-size: 16px; font-weight: 800;">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="login-view" class="container" style="max-width: 400px; margin-top: 100px;">
         <div class="glass-card" style="padding: 40px; text-align: center;">
             <h1 style="margin-bottom: 8px;">AiDash</h1>
@@ -162,13 +200,12 @@
         </header>
 
         <div class="stats-strip">
-            <div class="stat-card" id="battery-stat-card" style="cursor: pointer;">
-                <div class="stat-label">BATTERY</div>
-                <div id="bat-val" class="stat-val">N/A</div>
-                <div class="bar-bg"><div id="bat-bar" class="bar-fill" style="width: 0%; background: var(--warning)"></div></div>
-                <div id="bat-details" style="font-size: 9px; margin-top: 8px; opacity: 0.6; display: none;"></div>
+            <div class="stat-card active" id="cpu-stat-card" style="cursor: pointer;" onclick="switchView('cpu')">
+                <div class="stat-label">CPU LOAD</div>
+                <div id="cpu-val" class="stat-val">0%</div>
+                <div class="bar-bg"><div id="cpu-bar" class="bar-fill" style="width: 0%; background: var(--primary)"></div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="mem-stat-card" style="cursor: pointer;" onclick="switchView('mem')">
                 <div class="stat-label">MEMORY / SWAP</div>
                 <div style="display: flex; justify-content: space-between; align-items: baseline;">
                     <div id="mem-val" class="stat-val">0.0GB</div>
@@ -177,17 +214,31 @@
                 <div class="bar-bg" style="height: 4px; margin-top: 8px;"><div id="mem-bar" class="bar-fill" style="width: 0%; background: var(--accent)"></div></div>
                 <div class="bar-bg" style="height: 2px; margin-top: 4px; opacity: 0.3;"><div id="swap-bar" class="bar-fill" style="width: 0%; background: var(--text-dim)"></div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="processes-stat-card" style="cursor: pointer;" onclick="switchView('processes')">
                 <div class="stat-label">PROCESSES</div>
                 <div id="proc-count-val" class="stat-val">0</div>
                 <div style="font-size: 10px; margin-top: 8px; opacity: 0.5;">ACTIVE TASKS IN /PROC</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card" id="disk-stat-card" style="cursor: pointer;" onclick="switchView('disk')">
                 <div class="stat-label">STORAGE</div>
                 <div id="disk-val" class="stat-val">0%</div>
                 <div class="bar-bg"><div id="disk-bar" class="bar-fill" style="width: 0%; background: var(--success)"></div></div>
             </div>
         </div>
+
+        <!-- Dedicated Metric Analytics Panel -->
+        <section class="glass-card" style="margin-bottom: 24px; border-color: var(--primary); background: linear-gradient(to bottom, rgba(59, 130, 246, 0.05), transparent);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="panel-chart-title" style="margin: 0;">CPU LOAD ANALYTICS</h3>
+                <div style="display: flex; gap: 8px;">
+                    <div style="width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite;"></div>
+                    <span style="font-size: 10px; color: var(--text-dim); font-weight: 800; letter-spacing: 0.05em;">LIVE TELEMETRY STREAM</span>
+                </div>
+            </div>
+            <div style="height: 250px; width: 100%;">
+                <canvas id="mainChart"></canvas>
+            </div>
+        </section>
 
         <div class="grid" style="grid-template-columns: 2.2fr 1fr;">
             <section class="glass-card" style="padding: 0; display: flex; flex-direction: column; border-color: var(--primary);">
@@ -232,7 +283,7 @@
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Kernel</span> <span id="os-val">...</span></div>
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Uptime</span> <span id="hero-uptime">...</span></div>
                     <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--card-border); padding-bottom:8px;"><span style="color:var(--text-dim)">Active Ports</span> <span id="os-ports">...</span></div>
-                    <div style="display:grid; gap:4px;"><span style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU LOAD HISTORY</span> <div style="height: 60px; width: 100%;"><canvas id="miniChart"></canvas></div></div>
+                    <div style="display:grid; gap:4px;"><span id="chart-title" style="color:var(--text-dim); font-size:10px; font-weight:800;">CPU LOAD HISTORY</span> <div style="height: 60px; width: 100%;"><canvas id="miniChart"></canvas></div></div>
                 </div>
             </section>
         </div>
@@ -380,6 +431,12 @@
     <style>
         .pal-item { padding: 14px 18px; cursor: pointer; border-radius: 8px; font-size: 14px; font-weight: 600; }
         .pal-item:hover { background: var(--primary); color: white; transform: translateX(8px); }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 
     <script>
@@ -388,18 +445,72 @@
             async get(url) { return fetch(url).then(r => r.json()); }
         };
 
-        let miniChart, currentDir = '.', currentFile = null, termMode = 'SYSTEM';
+        let miniChart, mainChart, modalChart, currentDir = '.', currentFile = null, termMode = 'SYSTEM', currentView = 'cpu';
+
+        function switchView(view) {
+            currentView = view;
+            const titles = { cpu: 'CPU LOAD ANALYTICS', mem: 'MEMORY USAGE ANALYTICS', processes: 'PROCESS COUNT ANALYTICS', disk: 'DISK USAGE ANALYTICS' };
+            const colors = { cpu: '#3b82f6', mem: '#8b5cf6', processes: '#f59e0b', disk: '#10b981' };
+            
+            if (document.getElementById('chart-title')) document.getElementById('chart-title').textContent = titles[view].replace(' ANALYTICS', ' HISTORY');
+            if (document.getElementById('modal-chart-title')) document.getElementById('modal-chart-title').textContent = titles[view].replace(' ANALYTICS', ' HISTORY');
+            if (document.getElementById('panel-chart-title')) document.getElementById('panel-chart-title').textContent = titles[view];
+            
+            const color = colors[view];
+            const bg = color + '1A';
+
+            [miniChart, mainChart, modalChart].forEach(chart => {
+                if (chart) {
+                    chart.data.datasets[0].borderColor = color;
+                    chart.data.datasets[0].backgroundColor = bg;
+                    if (chart !== miniChart) {
+                        chart.data.datasets[0].pointBackgroundColor = color;
+                        chart.data.datasets[0].label = titles[view];
+                    }
+                }
+            });
+            
+            // Visual feedback on cards
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+            const card = document.getElementById(view + '-stat-card');
+            if (card) card.classList.add('active');
+            
+            openChartModal();
+            refreshAll(); 
+        }
+
+        function openChartModal() { document.getElementById('chart-modal').classList.remove('hidden'); }
+        function closeChartModal() { document.getElementById('chart-modal').classList.add('hidden'); }
 
         function initChart() {
-            const ctx = document.getElementById('miniChart').getContext('2d');
-            miniChart = new Chart(ctx, {
-                type: 'line',
-                data: { labels: [], datasets: [
-                    { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1 }
-                ]},
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, 
-                    scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } }
+            const chartOptions = { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { 
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#71717a', font: { size: 10 } } }, 
+                    x: { display: false } 
                 }
+            };
+
+            const miniCtx = document.getElementById('miniChart').getContext('2d');
+            miniChart = new Chart(miniCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 0, borderWidth: 1.5 }]},
+                options: { ...chartOptions, scales: { y: { display: false, min: 0, max: 100 }, x: { display: false } } }
+            });
+
+            const mainCtx = document.getElementById('mainChart').getContext('2d');
+            mainChart = new Chart(mainCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'CPU LOAD', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#3b82f6', borderWidth: 2 }]},
+                options: chartOptions
+            });
+
+            const modalCtx = document.getElementById('modalChartCanvas').getContext('2d');
+            modalChart = new Chart(modalCtx, {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'CPU LOAD', borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', data: [], fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#3b82f6', borderWidth: 2 }]},
+                options: chartOptions
             });
         }
 
@@ -444,10 +555,6 @@
             document.getElementById('sys-bar').style.display = 'flex';
             
             document.getElementById('hero-term-input').onkeydown = handleHeroInput;
-            document.getElementById('battery-stat-card').onclick = () => {
-                const details = document.getElementById('bat-details');
-                details.style.display = details.style.display === 'none' ? 'block' : 'none';
-            };
 
             initChart();
             refreshAll();
@@ -467,18 +574,12 @@
             document.getElementById('bar-date').textContent = stats.metrics.date;
             document.getElementById('bar-wifi').textContent = `📶 ${stats.metrics.wifi}`;
             
-            // Battery Update
+            // System Bar Battery/AC only (since card is gone)
             const bat = stats.metrics.battery;
             if (bat !== 'N/A') {
                 document.getElementById('bar-battery').textContent = `${bat.isCharging ? '⚡' : '🔋'} ${bat.percent}%`;
-                document.getElementById('bat-val').textContent = `${bat.percent}%`;
-                document.getElementById('bat-bar').style.width = `${bat.percent}%`;
-                document.getElementById('bat-details').textContent = `${bat.isCharging ? 'Charging' : 'Discharging'} @ /sys/class/power_supply`;
             } else {
                 document.getElementById('bar-battery').textContent = '🔌 AC';
-                document.getElementById('bat-val').textContent = '100%';
-                document.getElementById('bat-bar').style.width = '100%';
-                document.getElementById('bat-details').textContent = 'Stable AC Power Source';
             }
 
             // AI Anomaly Updates
@@ -512,6 +613,8 @@
                 lastAlertCount = alerts.length;
             }
 
+            document.getElementById('cpu-val').textContent = stats.metrics.cpuCores[0] + '%';
+            document.getElementById('cpu-bar').style.width = stats.metrics.cpuCores[0] + '%';
             document.getElementById('mem-val').textContent = ((stats.totalMem - stats.freeMem)/1024/1024/1024).toFixed(1) + 'GB';
             document.getElementById('mem-bar').style.width = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100) + '%';
             
@@ -529,8 +632,35 @@
             document.getElementById('os-ports').textContent = stats.metrics.ports;
 
             miniChart.data.labels = history.labels;
-            miniChart.data.datasets[0].data = history.cpu;
-            miniChart.update('none');
+            
+            // Map current view to history key
+            const historyMap = { cpu: 'cpu', mem: 'mem', processes: 'processes', disk: 'disk' };
+            const historyData = history[historyMap[currentView]] || [];
+            
+            // Update all charts
+            [miniChart, mainChart, modalChart].forEach(chart => {
+                if (chart) {
+                    chart.data.labels = history.labels;
+                    chart.data.datasets[0].data = historyData;
+                }
+            });
+
+            if (modalChart) {
+                // Update modal mini-stats
+                if (document.getElementById('modal-val-cpu')) document.getElementById('modal-val-cpu').textContent = stats.metrics.cpuCores[0] + '%';
+                if (document.getElementById('modal-val-mem')) document.getElementById('modal-val-mem').textContent = ((stats.totalMem - stats.freeMem)/stats.totalMem * 100).toFixed(0) + '%';
+                if (document.getElementById('modal-val-processes')) document.getElementById('modal-val-processes').textContent = stats.metrics.totalProcesses;
+                if (document.getElementById('modal-val-disk')) document.getElementById('modal-val-disk').textContent = disk.main.usage;
+            }
+
+            // Auto-scale Y axis for processes, others 0-100%
+            const maxVal = currentView === 'processes' ? Math.max(...historyData, 10) : 100;
+            [miniChart, mainChart, modalChart].forEach(chart => {
+                if (chart) {
+                    chart.options.scales.y.max = maxVal;
+                    chart.update('none');
+                }
+            });
         }
 
         function formatSize(bytes) {
