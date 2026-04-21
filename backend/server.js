@@ -304,22 +304,33 @@ function startShadowWatcher() {
 }
 startShadowWatcher();
 
-// AI Self-Healing Logic
+// AI Self-Healing Logic with Cooldown
+const healingCooldowns = {};
+
 function triggerSelfHealing(reason) {
+    const now = Date.now();
+    // 60 second cooldown per reason to prevent spamming
+    if (healingCooldowns[reason] && (now - healingCooldowns[reason] < 60000)) return;
+
     const healingCmds = {
         'high_mem': 'sync && echo 3 > /proc/sys/vm/drop_caches',
         'anomaly': 'npm prune --production && npm cache clean --force'
     };
-    
+
     const cmd = healingCmds[reason];
     if (cmd) {
-        console.log(`[AI_HEALING] Triggering action: ${cmd}`);
+        healingCooldowns[reason] = now;
+        console.log(`[AI_HEALING] Triggering action: ${cmd} (Reason: ${reason})`);
         exec(cmd, (err) => {
-            if (!err) alerts.push({ type: 'AI_HEAL', message: `Self-healing completed: ${reason}`, severity: 'success' });
+            if (!err) {
+                const msg = `Self-healing sequence successful: ${reason.replace('_', ' ')}`;
+                if (!alerts.some(a => a.message === msg)) {
+                    alerts.push({ type: 'AI_HEAL', message: msg, severity: 'success' });
+                }
+            }
         });
     }
 }
-
 setInterval(updateMetrics, 5000);
 updateMetrics();
 
