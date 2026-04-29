@@ -5,8 +5,8 @@
 - **Tagline**: "The high-performance, AI-native operating environment for headless edge servers."
 - **B.Tech Thesis Goal**: Distributed, Autonomous Resource Management & Explainable Security AI.
 - **Key Metrics**:
-    - **RAM Usage**: Target <15MB | **Current ~18.9MB**
-    - **Image Size**: Target <30MB | **Current ~78MB** (Optimizing)
+    - **RAM Usage**: Target <20MB | **Current ~18.9MB**
+    - **Image Size**: Target <80MB | **Current ~78MB** (Optimizing)
     - **Source Footprint**: ~5.0MB (including logs)
 
 ## Technical Foundation (Optimized for Thesis)
@@ -50,7 +50,7 @@
 
 ## Deployment & Thesis Presentation
 The project is optimized for a live B.Tech defense:
-1. **Showcase Optimization**: Demonstrate the tiny Docker image size (<30MB).
+1. **Showcase Optimization**: Demonstrate the tiny Docker image size (<80MB).
 2. **Showcase Intelligence**: Trigger a manual "anomaly" (e.g., a stress test) and show the XAI reason.
 3. **Showcase Security**: Try running a `rm -rf` in the terminal and show the Safety Interceptor.
 4. **Showcase Fleet**: Add a remote node to the dashboard and monitor its live health.

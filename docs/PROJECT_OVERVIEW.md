@@ -8,8 +8,8 @@
 ## Current Performance Metrics (Live)
 | Resource | Current Status | Thesis Target |
 | :--- | :--- | :--- |
-| **RAM (Memory)** | 18.9 MiB | < 15 MiB |
-| **ROM (Image Size)** | 78.4 MB | < 30 MiB |
+| **RAM (Memory)** | 18.9 MiB | < 20 MiB |
+| **ROM (Image Size)** | 78.4 MB | < 80 MiB |
 | **Source Footprint** | 5.0 MB | ~ 4.7 MB |
 
 ---

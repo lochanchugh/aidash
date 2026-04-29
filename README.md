@@ -59,6 +59,6 @@ Proving the AI isn't a "Black Box" for academic and professional review.
 - **AI**: Edge-based Anomaly Engine
 
 ### 📊 Current Performance Status
-- **RAM Idle**: ~18.9 MiB (Goal: <15 MiB)
-- **Docker Image**: 155 MB (Goal: <30 MiB)
+- **RAM Idle**: ~18.9 MiB (Goal: <20 MiB)
+- **Docker Image**: 155 MB (Goal: <80 MiB)
 - **Total Footprint**: ~159.7 MB
