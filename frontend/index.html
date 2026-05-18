@@ -709,6 +709,7 @@
 
       <div class="sidebar-footer">
         <button class="sidebar-btn" onclick="togglePalette()">⌘  CMD PALETTE  <span style="margin-left:auto; font-size:9px; color:var(--dim)">ctrl+k</span></button>
+        <button class="sidebar-btn" onclick="openFleetModal()">⊞  FLEET</button>
         <button class="sidebar-btn" onclick="openSecurityModal()">⊞  SETTINGS</button>
         <button class="sidebar-btn danger" onclick="logout()">⏻  LOGOUT</button>
       </div>
@@ -829,6 +830,8 @@
         </div>
       </div>
 
+      </div>
+
     </main>
   </div>
 </div>
@@ -908,14 +911,6 @@
 
         <!-- Right col -->
         <div>
-          <div class="sec-section-title">FEDERATED NODES</div>
-          <div id="fleet-container" style="margin-bottom:12px;"></div>
-          <div style="border:1px dashed var(--border); padding:10px; display:flex; flex-direction:column; gap:6px; margin-bottom:20px;">
-            <input type="text" id="node-name" placeholder="node alias (e.g. edge-02)" style="width:100%">
-            <input type="text" id="node-ip" placeholder="ip address (e.g. 192.168.1.5)" style="width:100%">
-            <button class="btn" style="justify-content:center;" onclick="addNode()">+ ADOPT NODE</button>
-          </div>
-
           <div class="sec-section-title">WIRELESS SPECTRUM</div>
           <button class="btn" style="width:100%; justify-content:center; margin-bottom:8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
           <div id="wifi-list-container" style="max-height:180px; overflow-y:auto;"></div>
@@ -928,6 +923,25 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ FLEET MODAL ═══════════ -->
+<div id="fleet-modal" class="overlay hidden" onclick="if(event.target===this)closeFleetModal()">
+  <div class="modal-box" style="width:640px;">
+    <div class="modal-header">
+      FLEET MANAGEMENT
+      <button class="modal-close" onclick="closeFleetModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="sec-section-title">ADOPTED NODES</div>
+      <div id="fleet-container-modal" style="margin-bottom:12px;"></div>
+      <div style="border:1px dashed var(--border); padding:10px; display:flex; flex-direction:column; gap:6px;">
+        <input type="text" id="node-name-modal" placeholder="node alias (e.g. edge-02)" style="width:100%">
+        <input type="text" id="node-ip-modal" placeholder="ip address (e.g. 192.168.1.5)" style="width:100%">
+        <button class="btn" style="justify-content:center;" onclick="addNode('modal')">+ ADOPT NODE</button>
       </div>
     </div>
   </div>
@@ -1102,8 +1116,10 @@
         document.getElementById('hero-term-input').onkeydown = handleHeroInput;
         initCharts();
         refreshAll();
+        refreshFleet();
         browseFiles('/host', true);
         setInterval(refreshAll, 5000);
+        setInterval(refreshFleet, 10000);
     }
 
     // ─── TERMINAL ───
@@ -1365,14 +1381,16 @@
     }
     function closeHealthModal() { document.getElementById('health-modal').classList.add('hidden'); }
 
-    // ─── SECURITY MODAL ───
+    // ─── FLEET MANAGEMENT ───
     async function refreshFleet() {
         const nodes = await API.get('/api/nodes/stats');
-        const container = document.getElementById('fleet-container');
+        const container = document.getElementById('fleet-container-modal');
+        
         if (!nodes || nodes.length === 0) {
             container.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);padding:8px;border:1px dashed var(--border);">no nodes adopted</div>';
             return;
         }
+        
         container.innerHTML = nodes.map(n => `
             <div class="fleet-node">
                 <div><div class="fleet-node-name">${n.name}</div><div class="fleet-node-ip">${n.ip}</div></div>
@@ -1382,15 +1400,22 @@
     }
 
     async function addNode() {
-        const name = document.getElementById('node-name').value;
-        const ip = document.getElementById('node-ip').value;
+        const name = document.getElementById('node-name-modal').value;
+        const ip = document.getElementById('node-ip-modal').value;
         if (!name || !ip) return;
         const r = await API.post('/api/nodes/add', { name, ip });
-        if (r.success) { document.getElementById('node-name').value = ''; document.getElementById('node-ip').value = ''; refreshFleet(); }
+        if (r.success) { 
+            document.getElementById('node-name-modal').value = ''; 
+            document.getElementById('node-ip-modal').value = ''; 
+            refreshFleet(); 
+        }
     }
 
-    function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); refreshFleet(); }
+    function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); }
     function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
+
+    function openFleetModal() { document.getElementById('fleet-modal').classList.remove('hidden'); refreshFleet(); }
+    function closeFleetModal() { document.getElementById('fleet-modal').classList.add('hidden'); }
 
     let selectedSSID = null;
     async function scanWifi() {
@@ -1489,6 +1514,9 @@
             document.getElementById('palette').classList.add('hidden');
             closeTerminal();
             closeDrawer();
+            closeFleetModal();
+            closeSecurityModal();
+            closeHealthModal();
         }
     };
 

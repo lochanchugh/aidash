@@ -33,11 +33,50 @@
     }
   ],
   "whitelist": [
-    "ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", 
-    "whoami", "last", "nproc", "lsblk", "ls -lah", "help", "status", "neofetch", "version",
-    "cat", "grep", "mkdir", "touch", "cp", "mv", "curl", "wget", "top", "htop", "ping", "ip", 
-    "netstat", "journalctl", "docker", "find", "sed", "awk", "head", "chmod", "chown", "date", 
-    "hostname", "uname", "ai", "ask"
+    "ls",
+    "df -h",
+    "uptime",
+    "free -m",
+    "du -sh",
+    "ps aux",
+    "tail -n 100",
+    "git pull",
+    "npm install",
+    "whoami",
+    "last",
+    "nproc",
+    "lsblk",
+    "ls -lah",
+    "help",
+    "status",
+    "neofetch",
+    "version",
+    "cat",
+    "grep",
+    "mkdir",
+    "touch",
+    "cp",
+    "mv",
+    "curl",
+    "wget",
+    "top",
+    "htop",
+    "ping",
+    "ip",
+    "netstat",
+    "journalctl",
+    "docker",
+    "find",
+    "sed",
+    "awk",
+    "head",
+    "chmod",
+    "chown",
+    "date",
+    "hostname",
+    "uname",
+    "ai",
+    "ask"
   ],
   "dangerous_commands": [
     "rm -rf",
@@ -50,6 +89,11 @@
     {
       "name": "Local-Edge",
       "ip": "localhost",
+      "status": "Online"
+    },
+    {
+      "name": "server-dash",
+      "ip": "100.103.165.94:3000",
       "status": "Online"
     }
   ]
