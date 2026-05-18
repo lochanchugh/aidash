@@ -661,9 +661,9 @@
         <span class="topbar-stat" id="bar-date"></span>
     </div>
     <div class="topbar-right">
-        <span id="bar-wifi">WIFI: —</span>
-        <span id="bar-battery">POWER: AC</span>
-        <span id="bar-user"></span>
+        <span id="bar-wifi" onclick="openSecurityModal()" style="cursor:pointer;">WIFI: —</span>
+        <span id="bar-battery" onclick="openPowerModal()" style="cursor:pointer;">POWER: AC</span>
+        <span id="bar-user" onclick="openSecurityModal()" style="cursor:pointer;"></span>
     </div>
 </div>
 
@@ -964,6 +964,35 @@
         <input type="text" id="node-name-modal" placeholder="node alias (e.g. edge-02)" style="width:100%">
         <input type="text" id="node-ip-modal" placeholder="ip address (e.g. 192.168.1.5)" style="width:100%">
         <button class="btn" style="justify-content:center;" onclick="addNode('modal')">+ ADOPT NODE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ POWER HUB MODAL ═══════════ -->
+<div id="power-modal" class="overlay hidden" onclick="if(event.target===this)closePowerModal()">
+  <div class="modal-box" style="width:500px;">
+    <div class="modal-header">
+      POWER HUB &amp; ENERGY
+      <button class="modal-close" onclick="closePowerModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="sec-grid">
+        <div class="xai-tile">
+          <div class="xai-label">STATUS</div>
+          <div class="xai-val" id="pwr-status" style="color:var(--green)">AC POWER</div>
+        </div>
+        <div class="xai-tile">
+          <div class="xai-label">CAPACITY</div>
+          <div class="xai-val" id="pwr-cap" style="color:var(--green)">100%</div>
+        </div>
+      </div>
+      <div class="sec-section-title" style="margin-top:20px;">ENERGY CONSUMPTION TREND</div>
+      <div style="height:180px; margin-top:10px;">
+        <canvas id="powerChart"></canvas>
+      </div>
+      <div id="pwr-health" style="margin-top:15px; font-family:var(--mono); font-size:10px; color:var(--muted); border-top:1px solid var(--border); padding-top:10px;">
+        Battery Health: <span style="color:var(--green)">Optimal</span> | Cycles: 42
       </div>
     </div>
   </div>
@@ -1441,7 +1470,55 @@
     function openFleetModal() { document.getElementById('fleet-modal').classList.remove('hidden'); refreshFleet(); }
     function closeFleetModal() { document.getElementById('fleet-modal').classList.add('hidden'); }
 
-    // ─── DOCKER MANAGEMENT ───
+    let powerChart = null;
+    async function openPowerModal() {
+        document.getElementById('power-modal').classList.remove('hidden');
+        const [stats, hist] = await Promise.all([API.get('/api/stats'), API.get('/api/history')]);
+
+        const bat = stats.metrics.battery;
+        const statusEl = document.getElementById('pwr-status');
+        const capEl = document.getElementById('pwr-cap');
+
+        if (bat === 'N/A') {
+            statusEl.textContent = 'AC POWER';
+            statusEl.style.color = 'var(--green)';
+            capEl.textContent = '100%';
+        } else {
+            statusEl.textContent = bat.isCharging ? 'CHARGING' : 'DISCHARGING';
+            statusEl.style.color = bat.isCharging ? 'var(--green)' : 'var(--amber)';
+            capEl.textContent = bat.percent + '%';
+        }
+
+        const ctx = document.getElementById('powerChart').getContext('2d');
+        if (powerChart) powerChart.destroy();
+        powerChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: hist.labels,
+                datasets: [{
+                    label: 'Battery %',
+                    data: hist.battery,
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } } },
+                    x: { grid: { display: false }, ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 8 }, maxRotation: 0 } }
+                }
+            }
+        });
+    }
+    function closePowerModal() { document.getElementById('power-modal').classList.add('hidden'); }
+
+    // ─── FLEET MANAGEMENT ───
     async function refreshDocker() {
         const containers = await API.get('/api/docker');
         const list = document.getElementById('docker-list');
@@ -1574,6 +1651,7 @@
             closeTerminal();
             closeDrawer();
             closeFleetModal();
+            closePowerModal();
             closeSecurityModal();
             closeHealthModal();
         }

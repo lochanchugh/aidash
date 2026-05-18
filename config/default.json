@@ -90,11 +90,6 @@
       "name": "Local-Edge",
       "ip": "localhost",
       "status": "Online"
-    },
-    {
-      "name": "server-dash",
-      "ip": "100.103.165.94:3000",
-      "status": "Online"
     }
   ]
 }

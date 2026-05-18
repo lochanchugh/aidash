@@ -79,7 +79,7 @@ let sysMetrics = {
 };
 
 // Historical data for graphs and AI
-let history = { cpu: [], mem: [], swap: [], disk: [], processes: [], labels: [] };
+let history = { cpu: [], mem: [], swap: [], disk: [], processes: [], battery: [], labels: [] };
 let baseline = { cpu: 0, mem: 0, count: 0 };
 
 let lastCpuSum = 0, lastCpuIdle = 0;
@@ -216,6 +216,7 @@ async function updateMetrics() {
     history.swap.push(metrics.swap.toFixed(1));
     history.processes.push(metrics.processes);
     history.disk.push(currentDiskUsage);
+    history.battery.push(sysMetrics.battery !== 'N/A' ? sysMetrics.battery.percent : 0);
 
     if (history.labels.length > 20) {
         history.labels.shift();
@@ -224,6 +225,7 @@ async function updateMetrics() {
         history.swap.shift();
         history.processes.shift();
         history.disk.shift();
+        history.battery.shift();
     }
     
     // Update disk usage in background for next tick
