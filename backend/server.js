@@ -270,9 +270,19 @@ async function updateMetrics() {
         
         // Temperature from /sys
         try {
-            if (fs.existsSync('/sys/class/thermal/thermal_zone0/temp')) {
-                const t = fs.readFileSync('/sys/class/thermal/thermal_zone0/temp', 'utf8');
-                sysMetrics.temp = (parseInt(t) / 1000).toFixed(1) + '°C';
+            const zones = fs.readdirSync('/sys/class/thermal').filter(d => d.startsWith('thermal_zone'));
+            for (const zone of zones) {
+                const tempPath = `/sys/class/thermal/${zone}/temp`;
+                const typePath = `/sys/class/thermal/${zone}/type`;
+                if (fs.existsSync(tempPath)) {
+                    const t = fs.readFileSync(tempPath, 'utf8');
+                    const type = fs.existsSync(typePath) ? fs.readFileSync(typePath, 'utf8').trim() : '';
+                    // Prioritize x86_pkg_temp or first found
+                    if (type.includes('pkg') || sysMetrics.temp === 'N/A') {
+                        sysMetrics.temp = (parseInt(t) / 1000).toFixed(1) + '°C';
+                        if (type.includes('pkg')) break;
+                    }
+                }
             }
         } catch(e) {}
 
@@ -282,7 +292,13 @@ async function updateMetrics() {
             if (batPath) {
                 const cap = fs.readFileSync(path.join(batPath, 'capacity'), 'utf8').trim();
                 const status = fs.readFileSync(path.join(batPath, 'status'), 'utf8').trim();
-                sysMetrics.battery = { percent: parseInt(cap), isCharging: status === 'Charging' };
+                let cycles = 'N/A';
+                try {
+                    if (fs.existsSync(path.join(batPath, 'cycle_count'))) {
+                        cycles = fs.readFileSync(path.join(batPath, 'cycle_count'), 'utf8').trim();
+                    }
+                } catch(e2) {}
+                sysMetrics.battery = { percent: parseInt(cap), isCharging: status === 'Charging', cycles };
             }
         } catch(e) {}
 

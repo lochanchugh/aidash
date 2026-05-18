@@ -992,7 +992,7 @@
         <canvas id="powerChart"></canvas>
       </div>
       <div id="pwr-health" style="margin-top:15px; font-family:var(--mono); font-size:10px; color:var(--muted); border-top:1px solid var(--border); padding-top:10px;">
-        Battery Health: <span style="color:var(--green)">Optimal</span> | Cycles: 42
+        Battery Health: <span style="color:var(--green)" id="bat-health-status">Checking...</span> | Cycles: <span id="bat-cycles">...</span>
       </div>
     </div>
   </div>
@@ -1478,15 +1478,32 @@
         const bat = stats.metrics.battery;
         const statusEl = document.getElementById('pwr-status');
         const capEl = document.getElementById('pwr-cap');
+        const healthEl = document.getElementById('bat-health-status');
+        const cyclesEl = document.getElementById('bat-cycles');
 
         if (bat === 'N/A') {
             statusEl.textContent = 'AC POWER';
             statusEl.style.color = 'var(--green)';
             capEl.textContent = '100%';
+            healthEl.textContent = 'Plugged In';
+            healthEl.style.color = 'var(--green)';
+            cyclesEl.textContent = 'N/A';
         } else {
             statusEl.textContent = bat.isCharging ? 'CHARGING' : 'DISCHARGING';
             statusEl.style.color = bat.isCharging ? 'var(--green)' : 'var(--amber)';
             capEl.textContent = bat.percent + '%';
+            cyclesEl.textContent = bat.cycles || 'N/A';
+            
+            // Artificial health calculation for thesis context
+            const cycleNum = parseInt(bat.cycles);
+            if (!isNaN(cycleNum)) {
+                if (cycleNum < 300) { healthEl.textContent = 'Optimal'; healthEl.style.color = 'var(--green)'; }
+                else if (cycleNum < 800) { healthEl.textContent = 'Good'; healthEl.style.color = 'var(--amber)'; }
+                else { healthEl.textContent = 'Service Recommended'; healthEl.style.color = 'var(--red)'; }
+            } else {
+                healthEl.textContent = 'Nominal';
+                healthEl.style.color = 'var(--green)';
+            }
         }
 
         const ctx = document.getElementById('powerChart').getContext('2d');
