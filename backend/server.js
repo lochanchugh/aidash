@@ -51,7 +51,13 @@ function getConfig() {
     return { modules: { alerts: true, ai: true, logs: true, disk: true, files: true } };
 }
 
-const WHITELIST_DEFAULT = ['ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install', 'whoami', 'last', 'nproc', 'lsblk', 'ls -lah'];
+const WHITELIST_DEFAULT = [
+    'ls', 'df -h', 'uptime', 'free -m', 'du -sh', 'ps aux', 'tail -n 100', 'git pull', 'npm install', 
+    'whoami', 'last', 'nproc', 'lsblk', 'ls -lah', 'help', 'status', 'neofetch', 'version',
+    'cat', 'grep', 'mkdir', 'touch', 'cp', 'mv', 'curl', 'wget', 'top', 'htop', 'ping', 'ip', 
+    'netstat', 'journalctl', 'docker', 'find', 'sed', 'awk', 'head', 'chmod', 'chown', 'date', 
+    'hostname', 'uname', 'ai', 'ask'
+];
 
 let alerts = [];
 let sysMetrics = { 
@@ -534,7 +540,7 @@ function handleLogs(res) {
 function handleCommand(req, res) {
     let body = '';
     req.on('data', chunk => { body += chunk.toString(); });
-    req.on('end', () => {
+    req.on('end', async () => {
         try {
             const { command, bypass } = JSON.parse(body);
             const config = getConfig();
@@ -576,6 +582,120 @@ function handleCommand(req, res) {
 
             // 4. Learning Phase
             learnCommand(command);
+
+            // 5. Custom Virtual Commands
+            if (command.startsWith('ai ') || command.startsWith('ask ')) {
+                const prompt = command.replace(/^(ai|ask)\s+/, '');
+                const provider = config.ai_provider || 'offline';
+                const stats = {
+                    uptime: os.uptime(),
+                    load: os.loadavg()[0],
+                    mem: parseFloat(sysMetrics.mem),
+                    anomaly: sysMetrics.anomaly.score
+                };
+
+                let aiResponse = { text: "AI Offline: Monitoring system.", suggestion: null };
+                if (provider !== 'offline') {
+                    if (provider === 'local') {
+                        // Use the local 'gemini' CLI tool installed on the server
+                        return new Promise((resolve) => {
+                            exec(`gemini "${prompt.replace(/"/g, '\\"')}"`, (err, stdout, stderr) => {
+                                const output = stdout || stderr || "Local Gemini command failed or returned no output.";
+                                handleJson(res, { output: `[HERO_AI] ${output.trim()}` });
+                                resolve();
+                            });
+                        });
+                    } else if (provider === 'gemini' && config.ai_config.gemini_api_key) {
+                        aiResponse.text = `[Gemini] Analysis: "${prompt}"... (Cloud Active)`;
+                    } else if (provider === 'ollama') {
+                        try {
+                            const ollamaRes = await fetch(config.ai_config.ollama_endpoint, {
+                                method: 'POST',
+                                body: JSON.stringify({ model: 'llama2', prompt: `Context: System Load ${stats.load}, RAM ${stats.mem}%. User asked: ${prompt}`, stream: false })
+                            }).then(r => r.json());
+                            aiResponse.text = ollamaRes.response;
+                        } catch(e) { aiResponse.text = "Ollama connection failed."; }
+                    }
+                } else {
+                    const p = prompt.toLowerCase();
+                    if (p.includes('status') || p.includes('how')) {
+                        aiResponse.text = `System is ${sysMetrics.anomaly.status}. Load: ${stats.load.toFixed(2)}.`;
+                    } else if (p.includes('fix') || p.includes('high')) {
+                        aiResponse.text = "Recommended: Run 'ps aux' or trigger 'AI Self-Healing'.";
+                        aiResponse.suggestion = "ps aux";
+                    } else {
+                        aiResponse.text = "Hero Terminal AI: Ask about system health, security, or common commands.";
+                    }
+                }
+                handleJson(res, { output: `[AI] ${aiResponse.text}${aiResponse.suggestion ? '\nSuggestion: ' + aiResponse.suggestion : ''}` });
+                return;
+            }
+
+            if (command === 'help') {
+                const helpText = `
+AiDash Hero Terminal - Available Commands:
+------------------------------------------
+SYSTEM:
+  ls, cat, grep, ps, df, du, free, uptime, top, docker
+  mkdir, touch, cp, mv, curl, wget, ping, ip, netstat
+  whoami, nproc, lsblk, journalctl, find, sed, awk
+
+UTILITIES:
+  ai <prompt>      Ask the Hero AI (Gemini/Ollama)
+  status           Node health summary
+  neofetch         System branding
+  clear            Clear terminal
+  exit             Close terminal
+
+SECURITY:
+  --force          Bypass AI Guard
+`;
+                handleJson(res, { output: helpText });
+                return;
+            }
+
+            if (command === 'status') {
+                const statusText = `
+[ NODE STATUS ]
+---------------
+OS: ${os.type()} ${os.release()}
+Uptime: ${Math.floor(os.uptime() / 3600)}h ${Math.floor((os.uptime() % 3600) / 60)}m
+Memory: ${sysMetrics.mem}% used
+Temp: ${sysMetrics.temp}
+Anomaly: ${sysMetrics.anomaly.status} (${sysMetrics.anomaly.score})
+Network: ${sysMetrics.ipv4}
+`;
+                handleJson(res, { output: statusText });
+                return;
+            }
+
+            if (command === 'neofetch') {
+                const neoText = `
+   ▄▄▄▄▄▄▄   
+  █ ▄▄▄▄▄ █  AiDash @ Edge-Node
+  █ █   █ █  -----------------
+  █ █▄▄▄█ █  OS: Alpine Linux (optimized)
+  █▄▄▄▄▄▄▄█  Kernel: Node.js ${process.version}
+             Uptime: ${Math.floor(os.uptime() / 3600)}h
+             Shell: Hero Terminal
+             AI: Active (LWMA Engine)
+`;
+                handleJson(res, { output: neoText });
+                return;
+            }
+
+            if (command === 'version') {
+                handleJson(res, { output: 'AiDash Terminal - Build: Phoenix' });
+                return;
+            }
+
+            if (command === 'whoami') {
+                exec('whoami', (err, stdout) => {
+                    const user = stdout.trim() || 'root';
+                    handleJson(res, { output: `[IDENTITY] You are authenticated as: ${user}\nRole: Administrator (AiDash-Edge)` });
+                });
+                return;
+            }
 
             exec(command, (err, stdout, stderr) => { 
                 handleJson(res, { output: stdout || stderr || '(No output)' }); 

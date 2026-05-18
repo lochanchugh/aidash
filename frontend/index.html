@@ -962,6 +962,8 @@
       <div class="pal-item" onclick="execCmd('nproc')">CPU core count</div>
       <div class="pal-item" onclick="execCmd('whoami')">Current user</div>
       <div class="pal-item" onclick="execCmd('lsblk')">Block device info</div>
+      <div class="pal-item" onclick="execCmd('status')">Node health summary <span class="pal-kbd">status</span></div>
+      <div class="pal-item" onclick="execCmd('neofetch')">System branding <span class="pal-kbd">neofetch</span></div>
       <div class="pal-item" onclick="execCmd('last -n 5')">Recent login activity</div>
       <div class="pal-item" onclick="location.reload()">Force dashboard refresh</div>
     </div>
@@ -1127,6 +1129,7 @@
         const val = e.target.value.trim();
         if (!val) return;
         e.target.value = '';
+        if (val === 'clear') { document.getElementById('hero-term-out').innerHTML = ''; return; }
         writeToHero(val, 'cmd');
         document.getElementById('term-loading').classList.remove('hidden');
         const bypass = val.includes('--force');
@@ -1440,7 +1443,7 @@
     function openTerminal() {
         document.getElementById('term-modal').classList.remove('hidden');
         document.getElementById('term-input').focus();
-        if (!document.getElementById('term-out').textContent) document.getElementById('term-out').textContent = 'AiDash Terminal v2\n';
+        if (!document.getElementById('term-out').textContent) document.getElementById('term-out').textContent = 'Hero Terminal\n';
     }
     function closeTerminal() { document.getElementById('term-modal').classList.add('hidden'); }
     document.getElementById('term-input').onkeydown = async function(e) {

@@ -5,7 +5,7 @@ AIDASH (formerly AiDash V2) is a specialized B.Tech project focusing on **Resour
 
 ## 🎓 B.Tech Project Thesis: Core Innovations
 
-### 1. Hero Terminal V2 (AI-Native Interface)
+### 1. Hero Terminal (AI-Native Interface)
 The terminal is no longer a "side tool"—it is the **Intelligence Hub**.
 - **Contextual Awareness**: Real-time analysis of typed commands against historical usage patterns.
 - **Unified Shell**: Direct system access with built-in Smart Safety Interceptor and AI-driven command learning.

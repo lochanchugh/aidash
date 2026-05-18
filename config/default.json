@@ -9,7 +9,7 @@
     "files": true,
     "safe_mode": true
   },
-  "ai_provider": "offline",
+  "ai_provider": "local",
   "ai_config": {
     "gemini_api_key": "",
     "ollama_endpoint": "http://localhost:11434/api/generate"
@@ -33,20 +33,11 @@
     }
   ],
   "whitelist": [
-    "ls",
-    "df -h",
-    "uptime",
-    "free -m",
-    "du -sh",
-    "ps aux",
-    "tail -n 100",
-    "git pull",
-    "npm install",
-    "whoami",
-    "last",
-    "nproc",
-    "lsblk",
-    "ls -lah"
+    "ls", "df -h", "uptime", "free -m", "du -sh", "ps aux", "tail -n 100", "git pull", "npm install", 
+    "whoami", "last", "nproc", "lsblk", "ls -lah", "help", "status", "neofetch", "version",
+    "cat", "grep", "mkdir", "touch", "cp", "mv", "curl", "wget", "top", "htop", "ping", "ip", 
+    "netstat", "journalctl", "docker", "find", "sed", "awk", "head", "chmod", "chown", "date", 
+    "hostname", "uname", "ai", "ask"
   ],
   "dangerous_commands": [
     "rm -rf",
