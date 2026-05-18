@@ -683,6 +683,7 @@
         <div class="nav-item active" id="nav-metrics" onclick="scrollToSection('metrics')"><span class="nav-dot"></span>Metrics</div>
         <div class="nav-item" id="nav-terminal" onclick="scrollToSection('terminal')"><span class="nav-dot"></span>Terminal</div>
         <div class="nav-item" id="nav-files" onclick="scrollToSection('files')"><span class="nav-dot"></span>File Explorer</div>
+        <div class="nav-item" id="nav-docker" onclick="scrollToSection('docker')"><span class="nav-dot"></span>Docker Hub</div>
       </nav>
 
       <!-- Anomaly engine -->
@@ -827,6 +828,27 @@
             <div class="file-items" id="file-list"></div>
           </div>
           <textarea class="file-editor-area" id="editor-area" readonly placeholder="// select a file to view or edit"></textarea>
+        </div>
+      </div>
+
+      <!-- DOCKER HUB -->
+      <div class="panel" id="docker" style="margin-top:20px;">
+        <div class="panel-header">
+          <span class="panel-title">DOCKER HUB</span>
+          <button class="btn" onclick="refreshDocker()">⟳ REFRESH</button>
+        </div>
+        <div class="proc-body" style="padding:10px;">
+          <table class="proc-table">
+            <thead>
+              <tr>
+                <th>NAME</th>
+                <th>IMAGE</th>
+                <th>STATUS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="docker-list"></tbody>
+          </table>
         </div>
       </div>
 
@@ -1077,13 +1099,13 @@
         });
     }
 
-    function scrollToSection(id) { 
+    function scrollToSection(id) {
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         setActiveNav(id);
+        if (id === 'docker') refreshDocker();
     }
-
     window.addEventListener('scroll', () => {
-        const sections = ['metrics', 'terminal', 'files'];
+        const sections = ['metrics', 'terminal', 'files', 'docker'];
         let current = 'metrics';
         for (const s of sections) {
             const el = document.getElementById(s);
@@ -1117,9 +1139,11 @@
         initCharts();
         refreshAll();
         refreshFleet();
+        refreshDocker();
         browseFiles('/host', true);
         setInterval(refreshAll, 5000);
         setInterval(refreshFleet, 10000);
+        setInterval(refreshDocker, 15000);
     }
 
     // ─── TERMINAL ───
@@ -1416,6 +1440,41 @@
 
     function openFleetModal() { document.getElementById('fleet-modal').classList.remove('hidden'); refreshFleet(); }
     function closeFleetModal() { document.getElementById('fleet-modal').classList.add('hidden'); }
+
+    // ─── DOCKER MANAGEMENT ───
+    async function refreshDocker() {
+        const containers = await API.get('/api/docker');
+        const list = document.getElementById('docker-list');
+        if (!list) return;
+        
+        list.innerHTML = containers.map(c => `
+            <tr>
+                <td style="color:var(--text); font-weight:600;">${c.name}</td>
+                <td style="color:var(--muted); font-size:10px;">${c.image}</td>
+                <td style="color:${c.running ? 'var(--green)' : 'var(--red)'}; font-size:10px;">${c.status}</td>
+                <td>
+                    <div style="display:flex; gap:4px;">
+                        <button class="btn" style="padding:2px 6px;" onclick="containerAction('${c.id}', '${c.running ? 'stop' : 'start'}')">
+                            ${c.running ? 'STOP' : 'START'}
+                        </button>
+                        <button class="btn" style="padding:2px 6px;" onclick="containerLogs('${c.id}')">LOGS</button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function containerAction(id, action) {
+        writeToHero(`docker ${action} ${id}`, 'cmd');
+        const res = await API.post('/api/command', { command: `docker ${action} ${id}` });
+        writeToHero(res.output || `Container ${action} sequence complete.`);
+        refreshDocker();
+    }
+
+    function containerLogs(id) {
+        execCmd(`docker logs --tail 50 ${id}`);
+        openTerminal();
+    }
 
     let selectedSSID = null;
     async function scanWifi() {

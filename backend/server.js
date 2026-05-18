@@ -427,6 +427,8 @@ const server = http.createServer((req, res) => {
         handleNodeAdd(req, res);
     } else if (url === '/api/nodes/stats' && method === 'GET') {
         handleNodeStats(res);
+    } else if (url === '/api/docker' && method === 'GET') {
+        handleDocker(res);
     } else if (url === '/api/modules' && method === 'GET') {
         handleJson(res, config.modules || {});
     } else {
@@ -1016,6 +1018,18 @@ async function handleNodeStats(res) {
     }));
 
     handleJson(res, results);
+}
+
+function handleDocker(res) {
+    // Portably check if docker is running and get container list
+    exec('docker ps -a --format "{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}"', (err, stdout) => {
+        if (err) { handleJson(res, []); return; }
+        const containers = (stdout || '').trim().split('\n').filter(l => l).map(l => {
+            const [id, image, status, name] = l.split('|');
+            return { id, image, status, name, running: status.startsWith('Up') };
+        });
+        handleJson(res, containers);
+    });
 }
 
 function startServer(port) {
