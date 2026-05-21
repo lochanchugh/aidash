@@ -958,12 +958,15 @@
       <button class="modal-close" onclick="closeFleetModal()">×</button>
     </div>
     <div class="modal-body">
-      <div class="sec-section-title">ADOPTED NODES</div>
+      <div class="sec-section-title">ADOPTED NODES & SERVICES</div>
       <div id="fleet-container-modal" style="margin-bottom:12px;"></div>
       <div style="border:1px dashed var(--border); padding:10px; display:flex; flex-direction:column; gap:6px;">
-        <input type="text" id="node-name-modal" placeholder="node alias (e.g. edge-02)" style="width:100%">
-        <input type="text" id="node-ip-modal" placeholder="ip address (e.g. 192.168.1.5)" style="width:100%">
-        <button class="btn" style="justify-content:center;" onclick="addNode('modal')">+ ADOPT NODE</button>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="node-name-modal" placeholder="alias (e.g. Node-RED)" style="flex:2">
+          <input type="text" id="node-ip-modal" placeholder="ip (e.g. localhost)" style="flex:2">
+          <input type="number" id="node-port-modal" placeholder="port (optional)" style="flex:1">
+        </div>
+        <button class="btn" style="justify-content:center;" onclick="addNode()">+ ADOPT ENDPOINT</button>
       </div>
     </div>
   </div>
@@ -1438,32 +1441,55 @@
     async function refreshFleet() {
         const nodes = await API.get('/api/nodes/stats');
         const container = document.getElementById('fleet-container-modal');
-        
+
         if (!nodes || nodes.length === 0) {
             container.innerHTML = '<div style="font-family:var(--mono);font-size:9px;color:var(--muted);padding:8px;border:1px dashed var(--border);">no nodes adopted</div>';
             return;
         }
-        
-        container.innerHTML = nodes.map(n => `
-            <div class="fleet-node">
-                <div><div class="fleet-node-name">${n.name}</div><div class="fleet-node-ip">${n.ip}</div></div>
-                <div style="text-align:right"><div class="fleet-node-stat">${n.mem} RAM</div><div style="font-size:9px;color:var(--muted)">L: ${n.load}</div></div>
-            </div>
-        `).join('');
-    }
 
+        container.innerHTML = nodes.map((n, idx) => {
+            const displayAddr = n.port ? `${n.ip}:${n.port}` : n.ip;
+            const fullAddr = n.port ? `http://${n.ip}:${n.port}` : `http://${n.ip}`;
+            return `
+                <div class="fleet-node">
+                    <div style="flex:1">
+                        <div class="fleet-node-name">${n.name}</div>
+                        <div class="fleet-node-ip" style="cursor:pointer; text-decoration:underline;" onclick="window.open('${fullAddr}')">
+                            ${displayAddr} ↗
+                        </div>
+                    </div>
+                    <div style="text-align:right; margin-right:12px;">
+                        <div class="fleet-node-stat" style="color:${n.status.includes('Online') || n.status.includes('Active') ? 'var(--green)' : 'var(--red)'}">${n.status}</div>
+                        <div style="font-size:9px;color:var(--muted)">RAM: ${n.mem} | LOAD: ${n.load}</div>
+                    </div>
+                    <button class="btn danger" style="padding:4px 8px; font-size:10px;" onclick="event.stopPropagation(); removeNode(${idx})">×</button>
+                </div>
+            `;
+        }).join('');
+    }
+    async function removeNode(index) {
+        if (!confirm('Remove this endpoint?')) return;
+        const r = await API.post('/api/nodes/remove', { index });
+        if (r.success) {
+            refreshFleet();
+        } else {
+            alert('Failed to remove: ' + (r.message || 'Unknown error'));
+        }
+    }
     async function addNode() {
         const name = document.getElementById('node-name-modal').value;
         const ip = document.getElementById('node-ip-modal').value;
+        const portVal = document.getElementById('node-port-modal').value;
         if (!name || !ip) return;
-        const r = await API.post('/api/nodes/add', { name, ip });
-        if (r.success) { 
-            document.getElementById('node-name-modal').value = ''; 
-            document.getElementById('node-ip-modal').value = ''; 
-            refreshFleet(); 
+        const port = portVal ? parseInt(portVal) : null;
+        const r = await API.post('/api/nodes/add', { name, ip, port });
+        if (r.success) {
+            document.getElementById('node-name-modal').value = '';
+            document.getElementById('node-ip-modal').value = '';
+            document.getElementById('node-port-modal').value = '';
+            refreshFleet();
         }
     }
-
     function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); }
     function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
 

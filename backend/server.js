@@ -443,6 +443,8 @@ const server = http.createServer((req, res) => {
         handleWifiConnect(req, res);
     } else if (url === '/api/nodes/add' && method === 'POST') {
         handleNodeAdd(req, res);
+    } else if (url === '/api/nodes/remove' && method === 'POST') {
+        handleNodeRemove(req, res);
     } else if (url === '/api/nodes/stats' && method === 'GET') {
         handleNodeStats(res);
     } else if (url === '/api/docker' && method === 'GET') {
@@ -998,32 +1000,53 @@ function handleNodeAdd(req, res) {
     let body = ''; req.on('data', chunk => { body += chunk.toString(); });
     req.on('end', () => {
         try {
-            const { name, ip } = JSON.parse(body);
+            const { name, ip, port } = JSON.parse(body);
             const config = getConfig();
             if (!config.nodes) config.nodes = [];
-            config.nodes.push({ name, ip, status: 'Online' });
+            config.nodes.push({ name, ip, port: port || null, status: 'Online' });
             fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
             handleJson(res, { success: true });
         } catch(e) { res.writeHead(400); res.end('Error'); }
     });
 }
 
+function handleNodeRemove(req, res) {
+    let body = ''; req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', () => {
+        try {
+            const { index } = JSON.parse(body);
+            const config = getConfig();
+            if (config.nodes && index >= 0 && index < config.nodes.length) {
+                config.nodes.splice(index, 1);
+                fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
+                handleJson(res, { success: true });
+            } else { 
+                res.writeHead(404); 
+                res.end(JSON.stringify({ success: false, message: 'Node not found' })); 
+            }
+        } catch(e) { res.writeHead(400); res.end(JSON.stringify({ success: false, message: 'Bad Request' })); }
+    });
+}
+
 async function handleNodeStats(res) {
     const config = getConfig();
     const nodes = config.nodes || [];
-    
-    // Real Federated Fetch: Attempting to connect to other edge nodes
+
     const results = await Promise.all(nodes.map(async n => {
         try {
-            // Check if the node is the current host (loopback) to avoid infinite recursion
-            if (n.ip === 'localhost' || n.ip === '127.0.0.1') return { ...n, status: 'Online (Host)', load: os.loadavg()[0], mem: 'Self' };
+            const fetchPort = n.port || 3000;
             
+            // Check if it's the current node
+            if ((n.ip === 'localhost' || n.ip === '127.0.0.1') && fetchPort === PORT) 
+                return { ...n, status: 'Online (Self)', load: os.loadavg()[0].toFixed(2), mem: sysMetrics.mem + '%' };
+
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 3000);
-            
-            const stats = await fetch(`http://${n.ip}:3000/api/stats`, { signal: controller.signal }).then(r => r.json());
+            const timeout = setTimeout(() => controller.abort(), 2000);
+
+            const r = await fetch(`http://${n.ip}:${fetchPort}/api/stats`, { signal: controller.signal });
+            const stats = await r.json();
             clearTimeout(timeout);
-            
+
             return {
                 ...n,
                 status: 'Online',
@@ -1031,13 +1054,14 @@ async function handleNodeStats(res) {
                 mem: ((stats.totalMem - stats.freeMem) / stats.totalMem * 100).toFixed(1) + '%'
             };
         } catch (e) {
+            // If it failed and had no explicit port, treat as generic bookmark
+            if (!n.port) return { ...n, status: 'Active (Bookmark)', load: '—', mem: '—' };
             return { ...n, status: 'Offline / Unreachable', load: 'N/A', mem: 'N/A' };
         }
     }));
 
     handleJson(res, results);
 }
-
 function handleDocker(res) {
     // Portably check if docker is running and get container list
     exec('docker ps -a --format "{{.ID}}|{{.Image}}|{{.Status}}|{{.Names}}"', (err, stdout) => {

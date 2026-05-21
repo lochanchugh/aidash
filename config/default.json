@@ -89,7 +89,7 @@
     {
       "name": "Local-Edge",
       "ip": "localhost",
-      "status": "Online"
+      "port": 3000
     }
   ]
 }
