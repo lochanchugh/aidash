@@ -19,7 +19,8 @@ RUN apk add --no-cache \
     iw \
     iproute2 \
     procps \
-    util-linux
+    util-linux \
+    docker-cli
 
 # Copy production node_modules from builder
 COPY --from=builder /app/node_modules ./node_modules

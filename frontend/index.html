@@ -1541,6 +1541,11 @@
         const list = document.getElementById('docker-list');
         if (!list) return;
         
+        if (!containers || containers.length === 0) {
+            list.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted); font-family:var(--mono); font-size:10px;">[ DOCKER ENGINE INACTIVE OR NO CONTAINERS ]</td></tr>`;
+            return;
+        }
+
         list.innerHTML = containers.map(c => `
             <tr>
                 <td style="color:var(--text); font-weight:600;">${c.name}</td>

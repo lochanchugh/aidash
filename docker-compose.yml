@@ -14,6 +14,7 @@ services:
       - ./server.log:/app/server.log
       - /:/host:rw
       - /var/run/dbus:/var/run/dbus
+      - /var/run/docker.sock:/var/run/docker.sock
       # Using /var/run/wpa_supplicant to avoid symlink recursion errors
       - /var/run/wpa_supplicant:/var/run/wpa_supplicant
     privileged: true
