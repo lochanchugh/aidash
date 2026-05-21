@@ -674,7 +674,7 @@
     <div class="topbar-right">
         <span id="bar-wifi" onclick="openWifiModal()" style="cursor:pointer;">WIFI: —</span>
         <span id="bar-battery" onclick="openPowerModal()" style="cursor:pointer;">POWER: AC</span>
-        <span id="bar-user" onclick="openSecurityModal()" style="cursor:pointer;"></span>
+        <span id="bar-user-wrap" onclick="openSecurityModal()" style="cursor:pointer;">USER: <span id="bar-user"></span></span>
     </div>
 </div>
 
@@ -784,7 +784,7 @@
           <div class="panel-header">
             <span class="panel-title">TERMINAL</span>
           </div>          <div class="terminal-body" id="hero-term-body">
-            <div style="color:var(--green); margin-bottom:4px; font-family:var(--mono); font-size:11px;">[INIT] AiDash intelligence layer active.</div>
+            <div id="hero-init-msg" style="color:var(--green); margin-bottom:4px; font-family:var(--mono); font-size:11px;">[INIT] AiDash intelligence layer active.</div>
             <div id="hero-term-out"></div>
           </div>
           <div class="terminal-input-row">
@@ -968,6 +968,25 @@
             <input type="password" id="old-pass" placeholder="current password" style="width:100%">
             <input type="password" id="new-pass" placeholder="new password" style="width:100%">
             <button class="btn" style="justify-content:center;" onclick="changePassword()">UPDATE PASSWORD</button>
+          </div>
+        </div>
+
+        <!-- Full Line: Terminal Greeting -->
+        <div style="grid-column: span 2;">
+          <div class="sec-section-title">TERMINAL GREETING</div>
+          <input type="text" id="custom-greeting" placeholder="e.g. Welcome back, Admin" style="width:100%;" onchange="savePersonalization()">
+        </div>
+
+        <!-- Full Width: Module Control -->
+        <div style="grid-column: span 2; border-top: 1px solid var(--border); padding-top: 15px;">
+          <div class="sec-section-title">MODULE CONTROL</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--text); cursor:pointer;">
+                <input type="checkbox" id="mod-docker" checked onchange="toggleModule('docker')"> DOCKER HUB
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; color:var(--text); cursor:pointer;">
+                <input type="checkbox" id="mod-files" checked onchange="toggleModule('files')"> FILE EXPLORER
+            </label>
           </div>
         </div>
 
@@ -1790,8 +1809,47 @@
         localStorage.setItem('aidash_theme', name);
     }
 
+    function loadPersonalization() {
+        const greeting = localStorage.getItem('aidash_greeting') || '[INIT] AiDash intelligence layer active.';
+        document.getElementById('custom-greeting').value = greeting;
+        document.getElementById('hero-init-msg').textContent = greeting;
+
+        // Load module states
+        ['docker', 'files'].forEach(id => {
+            const state = localStorage.getItem('mod_' + id) !== 'false';
+            const el = document.getElementById(id);
+            if (el) el.style.display = state ? 'block' : 'none';
+            
+            // Link Sidebar Jumper visibility
+            const nav = document.getElementById('nav-' + id);
+            if (nav) nav.style.display = state ? 'flex' : 'none';
+
+            const check = document.getElementById('mod-' + id);
+            if (check) check.checked = state;
+        });
+    }
+
+    function toggleModule(id) {
+        const isChecked = document.getElementById('mod-' + id).checked;
+        const el = document.getElementById(id);
+        if (el) el.style.display = isChecked ? 'block' : 'none';
+        
+        // Link Sidebar Jumper visibility
+        const nav = document.getElementById('nav-' + id);
+        if (nav) nav.style.display = isChecked ? 'flex' : 'none';
+
+        localStorage.setItem('mod_' + id, isChecked);
+    }
+
+    function savePersonalization() {
+        const greeting = document.getElementById('custom-greeting').value;
+        localStorage.setItem('aidash_greeting', greeting);
+        document.getElementById('hero-init-msg').textContent = greeting;
+    }
+
     // Apply saved theme immediately
     setTheme(localStorage.getItem('aidash_theme') || 'default');
+    loadPersonalization();
 
     async function changePassword() {
         const r = await API.post('/api/user/password', { username: localStorage.getItem('aidash_user'), oldPassword: document.getElementById('old-pass').value, newPassword: document.getElementById('new-pass').value });
