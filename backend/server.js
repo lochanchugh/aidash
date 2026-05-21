@@ -397,6 +397,10 @@ const server = http.createServer((req, res) => {
 
     if (url === '/' && method === 'GET') {
         serveFile(res, path.join(__dirname, '../frontend/index.html'), 'text/html');
+    } else if (url === '/manifest.json' && method === 'GET') {
+        serveFile(res, path.join(__dirname, '../manifest.json'), 'application/json');
+    } else if (url === '/sw.js' && method === 'GET') {
+        serveFile(res, path.join(__dirname, '../sw.js'), 'application/javascript');
     } else if (url === '/api/login' && method === 'POST') {
         handleLogin(req, res);
     } else if (url === '/api/user/password' && method === 'POST') {

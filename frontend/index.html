@@ -2,8 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0d0d0d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
     <title>AIDASH</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230d0d0d'/><path d='M30 50 L50 20 L50 45 L70 50 L50 80 L50 55 Z' fill='%234ade80'/></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -27,6 +32,9 @@
             --blue:      #60a5fa;
             --blue-dim:  rgba(96, 165, 250, 0.08);
             --teal:      #2dd4bf;
+            
+            --glow:      0 0 10px rgba(74, 222, 128, 0.2);
+            --glow-text: none;
 
             --mono: 'IBM Plex Mono', monospace;
             --sans: 'IBM Plex Sans', sans-serif;
@@ -70,6 +78,7 @@
             font-size: 12px;
             letter-spacing: 0.15em;
             color: var(--text);
+            text-shadow: var(--glow-text);
         }
         .topbar-stat { color: var(--muted); }
         .topbar-stat span { color: var(--text); }
@@ -105,6 +114,7 @@
             font-weight: 700;
             color: var(--text);
             letter-spacing: 0.05em;
+            text-shadow: var(--glow-text);
         }
         .sidebar-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
 
@@ -221,6 +231,7 @@
             border-bottom: 1px solid var(--border);
             background: var(--surface);
             padding: 0;
+            box-shadow: var(--glow);
         }
         .chart-panel-header {
             display: flex;
@@ -661,7 +672,7 @@
         <span class="topbar-stat" id="bar-date"></span>
     </div>
     <div class="topbar-right">
-        <span id="bar-wifi" onclick="openSecurityModal()" style="cursor:pointer;">WIFI: —</span>
+        <span id="bar-wifi" onclick="openWifiModal()" style="cursor:pointer;">WIFI: —</span>
         <span id="bar-battery" onclick="openPowerModal()" style="cursor:pointer;">POWER: AC</span>
         <span id="bar-user" onclick="openSecurityModal()" style="cursor:pointer;"></span>
     </div>
@@ -905,7 +916,30 @@
   </div>
 </div>
 
-<!-- ═══════════ SECURITY / FLEET MODAL ═══════════ -->
+<!-- ═══════════ WIRELESS SPECTRUM MODAL ═══════════ -->
+<div id="wifi-modal" class="overlay hidden" onclick="if(event.target===this)closeWifiModal()">
+  <div class="modal-box" style="width:480px;">
+    <div class="modal-header">
+      WIRELESS SPECTRUM
+      <button class="modal-close" onclick="closeWifiModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="sec-section-title">NETWORK SCANNER</div>
+      <button class="btn" style="width:100%; justify-content:center; margin-bottom:12px;" onclick="scanWifi()">SCAN AIRWAVES</button>
+      <div id="wifi-list-container" style="max-height:240px; overflow-y:auto;"></div>
+      <div id="wifi-join-form" class="hidden" style="background:var(--surface2); border:1px solid var(--border); padding:12px; margin-top:8px;">
+        <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:8px;" id="joining-ssid">JOINING: ...</div>
+        <input type="password" id="wifi-pass" placeholder="network password" style="width:100%; margin-bottom:8px;">
+        <div style="display:flex; gap:8px;">
+          <button class="btn primary" id="join-btn" onclick="connectWifi()" style="flex:1; justify-content:center;">CONNECT</button>
+          <button class="btn" onclick="cancelJoin()" style="justify-content:center;">CANCEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SECURITY / SETTINGS MODAL ═══════════ -->
 <div id="sec-modal" class="overlay hidden" onclick="if(event.target===this)closeSecurityModal()">
   <div class="modal-box" style="width:680px;">
     <div class="modal-header">
@@ -914,15 +948,21 @@
     </div>
     <div class="modal-body">
       <div class="sec-grid">
-        <!-- Left col -->
+        <!-- Top Left: Theme Selector (6 options) -->
         <div>
-          <div class="sec-section-title">XAI ENGINE STATUS</div>
-          <div style="background:var(--surface2); border:1px solid var(--border); padding:12px; font-family:var(--mono); font-size:10px; line-height:1.8; color:var(--muted); margin-bottom:20px;">
-            <div>Baseline: <span style="color:var(--green)" id="xai-baseline">Moving Average (20pt)</span></div>
-            <div>UBA: <span style="color:var(--blue)" id="xai-uba">Pattern Recognition Active</span></div>
-            <div style="margin-top:8px; line-height:1.6;">Anomaly fires when <span style="color:var(--amber)">Novelty &gt;85%</span> or <span style="color:var(--amber)">Variance &gt;2.5σ</span></div>
+          <div class="sec-section-title">INTERFACE THEME</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+            <button class="btn" style="justify-content:center; font-size:9px;" onclick="setTheme('default')">DEFAULT</button>
+            <button class="btn" style="justify-content:center; font-size:9px; border-color:#00ff41; color:#00ff41;" onclick="setTheme('matrix')">MATRIX</button>
+            <button class="btn" style="justify-content:center; font-size:9px; border-color:#ff0055; color:#ff0055;" onclick="setTheme('cyberpunk')">CYBER</button>
+            <button class="btn" style="justify-content:center; font-size:9px; border-color:#60a5fa; color:#60a5fa;" onclick="setTheme('midnight')">MIDNIGHT</button>
+            <button class="btn" style="justify-content:center; font-size:9px; border-color:#ff9f1c; color:#ff9f1c;" onclick="setTheme('vanguard')">VANGUARD</button>
+            <button class="btn" style="justify-content:center; font-size:9px; border-color:#0284c7; color:#0284c7;" onclick="setTheme('glacier')">GLACIER</button>
           </div>
+        </div>
 
+        <!-- Top Right: Credentials -->
+        <div>
           <div class="sec-section-title">ADMIN CREDENTIALS</div>
           <div class="input-row" style="gap:6px;">
             <input type="password" id="old-pass" placeholder="current password" style="width:100%">
@@ -931,20 +971,35 @@
           </div>
         </div>
 
-        <!-- Right col -->
+        <!-- Bottom Left: XAI Status -->
         <div>
-          <div class="sec-section-title">WIRELESS SPECTRUM</div>
-          <button class="btn" style="width:100%; justify-content:center; margin-bottom:8px;" onclick="scanWifi()">SCAN AIRWAVES</button>
-          <div id="wifi-list-container" style="max-height:180px; overflow-y:auto;"></div>
-          <div id="wifi-join-form" class="hidden" style="background:var(--surface2); border:1px solid var(--border); padding:12px; margin-top:8px;">
-            <div style="font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:8px;" id="joining-ssid">JOINING: ...</div>
-            <input type="password" id="wifi-pass" placeholder="network password" style="width:100%; margin-bottom:8px;">
-            <div style="display:flex; gap:8px;">
-              <button class="btn primary" id="join-btn" onclick="connectWifi()" style="flex:1; justify-content:center;">CONNECT</button>
-              <button class="btn" onclick="cancelJoin()" style="justify-content:center;">CANCEL</button>
-            </div>
+          <div class="sec-section-title">XAI ENGINE STATUS</div>
+          <div style="background:var(--surface2); border:1px solid var(--border); padding:12px; font-family:var(--mono); font-size:10px; line-height:1.8; color:var(--muted);">
+            <div>Baseline: <span style="color:var(--green)" id="xai-baseline">Moving Average (20pt)</span></div>
+            <div>UBA: <span style="color:var(--blue)" id="xai-uba">Pattern Recognition Active</span></div>
+            <div style="margin-top:8px; line-height:1.6;">Anomaly fires when <span style="color:var(--amber)">Novelty &gt;85%</span> or <span style="color:var(--amber)">Variance &gt;2.5σ</span></div>
           </div>
         </div>
+
+        <!-- Bottom Right: System Info -->
+        <div>
+          <div class="sec-section-title">SYSTEM INFO</div>
+          <div style="background:var(--surface2); border:1px solid var(--border); padding:12px; font-family:var(--mono); font-size:10px; line-height:1.8; color:var(--muted); margin-bottom:12px;">
+            <div>Build: <span style="color:var(--text)">v2.4.0 (Phoenix)</span></div>
+            <div>Codename: <span style="color:var(--blue)">AIDASH-CORE</span></div>
+          </div>
+          <button class="btn" style="width:100%; justify-content:center;" onclick="window.open('https://github.com/lochanchugh/aidash')">DOCUMENTATION</button>
+        </div>
+      </div>
+      
+      <!-- Footer: Centered About Us -->
+      <div style="margin-top:30px; padding-top:15px; border-top:1px solid var(--border); text-align:center;">
+          <div style="font-family:var(--sans); font-size:10px; letter-spacing:0.05em; color:var(--muted); opacity:0.8;">
+            <b>AIDASH</b> | AI-Native Autonomous Edge Manager for High-Performance Headless Environments
+          </div>
+          <div style="font-family:var(--mono); font-size:8px; color:var(--dim); margin-top:5px; letter-spacing:0.1em;">
+            © 2026 AIDASH PROJECT. ALL RIGHTS RESERVED.
+          </div>
       </div>
     </div>
   </div>
@@ -1043,6 +1098,15 @@
         async post(url, body) { return fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) }).then(r => r.json()); },
         async get(url) { return fetch(url).then(r => r.json()); }
     };
+
+    // ─── PWA REGISTRATION ───
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                console.log('AIDASH PWA Registered:', reg.scope);
+            }).catch(err => console.log('PWA Registration failed:', err));
+        });
+    }
 
     let mainChart, currentTimeFilter = '1m';
 
@@ -1493,6 +1557,9 @@
     function openSecurityModal() { document.getElementById('sec-modal').classList.remove('hidden'); }
     function closeSecurityModal() { document.getElementById('sec-modal').classList.add('hidden'); }
 
+    function openWifiModal() { document.getElementById('wifi-modal').classList.remove('hidden'); }
+    function closeWifiModal() { document.getElementById('wifi-modal').classList.add('hidden'); }
+
     function openFleetModal() { document.getElementById('fleet-modal').classList.remove('hidden'); refreshFleet(); }
     function closeFleetModal() { document.getElementById('fleet-modal').classList.add('hidden'); }
 
@@ -1635,10 +1702,8 @@
         if (!selectedSSID) return;
         const btn = document.getElementById('join-btn');
         const pass = document.getElementById('wifi-pass').value;
-        btn.textContent = 'AUTHENTICATING...';
-        btn.disabled = true;
         const res = await API.post('/api/wifi/connect', { ssid: selectedSSID, password: pass });
-        if (res.success) { alert('Connection initiated. Dashboard may disconnect briefly.'); cancelJoin(); closeSecurityModal(); }
+        if (res.success) { alert('Connection initiated. Dashboard may disconnect briefly.'); cancelJoin(); closeWifiModal(); }
         else { alert('Failed: ' + res.output); btn.textContent = 'RETRY'; btn.disabled = false; }
     }
 
@@ -1683,6 +1748,51 @@
     };
 
     // ─── PASSWORD ───
+    // ─── THEMES ───
+    const THEMES = {
+        default: {
+            '--bg': '#0d0d0d', '--surface': '#131313', '--surface2': '#1a1a1a', '--border': '#252525',
+            '--text': '#d4d4d4', '--green': '#4ade80', '--blue': '#60a5fa', '--amber': '#fbbf24',
+            '--glow': '0 0 10px rgba(74, 222, 128, 0.05)', '--glow-text': 'none'
+        },
+        matrix: {
+            '--bg': '#000000', '--surface': '#020202', '--surface2': '#050505', '--border': '#003b00',
+            '--text': '#00ff41', '--green': '#00ff41', '--blue': '#00ccff', '--amber': '#ffcc00',
+            '--glow': '0 0 15px rgba(0, 255, 65, 0.15)', '--glow-text': '0 0 8px rgba(0, 255, 65, 0.6)'
+        },
+        cyberpunk: {
+            '--bg': '#05050a', '--surface': '#0a0a14', '--surface2': '#10101a', '--border': '#ff0055',
+            '--text': '#00fff2', '--green': '#00fff2', '--blue': '#ff0055', '--amber': '#fff200',
+            '--glow': '0 0 20px rgba(255, 0, 85, 0.25)', '--glow-text': '0 0 10px rgba(0, 255, 242, 0.7)'
+        },
+        midnight: {
+            '--bg': '#02040a', '--surface': '#0d1117', '--surface2': '#161b22', '--border': '#30363d',
+            '--text': '#c9d1d9', '--green': '#238636', '--blue': '#58a6ff', '--amber': '#d29922',
+            '--glow': '0 0 12px rgba(88, 166, 255, 0.1)', '--glow-text': 'none'
+        },
+        vanguard: {
+            '--bg': '#0a0908', '--surface': '#141210', '--surface2': '#1c1a17', '--border': '#a68a64',
+            '--text': '#eae0d5', '--green': '#8ac926', '--blue': '#4cc9f0', '--amber': '#ff9f1c',
+            '--glow': '0 0 15px rgba(255, 159, 28, 0.15)', '--glow-text': '0 0 5px rgba(255, 159, 28, 0.4)'
+        },
+        glacier: {
+            '--bg': '#f0f4f8', '--surface': '#ffffff', '--surface2': '#f8fafc', '--border': '#cbd5e1',
+            '--text': '#1e293b', '--green': '#059669', '--blue': '#0284c7', '--amber': '#d97706',
+            '--glow': '0 0 15px rgba(2, 132, 199, 0.05)', '--glow-text': 'none'
+        }
+    };
+
+    function setTheme(name) {
+        const theme = THEMES[name] || THEMES.default;
+        Object.keys(theme).forEach(key => {
+            document.documentElement.style.setProperty(key, theme[key]);
+        });
+        localStorage.setItem('aidash_theme', name);
+    }
+
+    // Apply saved theme immediately
+    setTheme(localStorage.getItem('aidash_theme') || 'default');
+
     async function changePassword() {
         const r = await API.post('/api/user/password', { username: localStorage.getItem('aidash_user'), oldPassword: document.getElementById('old-pass').value, newPassword: document.getElementById('new-pass').value });
         writeToHero(r.success ? '[AUTH] Password updated.' : '[AUTH] Error: ' + r.message, r.success ? 'output' : 'danger');
