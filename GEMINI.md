@@ -67,7 +67,10 @@
 
 ## Deployment & Thesis Presentation
 The project is optimized for a live B.Tech defense:
-1. **Showcase Optimization**: Demonstrate the tiny Docker image size (<30MB).
-2. **Showcase Intelligence**: Trigger a manual "anomaly" (e.g., a stress test) and show the XAI reason.
-3. **Showcase Security**: Try running a `rm -rf` in the terminal and show the Safety Interceptor.
-4. **Showcase Fleet**: Add a remote node to the dashboard and monitor its live health.
+1. **Multi-OS Deployment**:
+    - **Linux**: Primary target for full hardware metrics and WiFi control.
+    - **Mac/Windows**: Fully supported via simulation mode (`docker-compose.macos.yml` / `docker-compose.windows.yml`).
+2. **Showcase Optimization**: Demonstrate the tiny Docker image size (<30MB).
+3. **Showcase Intelligence**: Trigger a manual "anomaly" (e.g., a stress test) and show the XAI reason.
+4. **Showcase Security**: Try running a `rm -rf` in the terminal and show the Safety Interceptor.
+5. **Showcase Fleet**: Add a remote node to the dashboard and monitor its live health.

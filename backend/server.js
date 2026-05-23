@@ -373,12 +373,16 @@ function evaluateAlerts() {
     const config = getConfig();
     if (config.modules && !config.modules.alerts) { alerts = []; return; }
     
+    // Preserve security and system alerts, only refresh Memory/Load
+    const persistentAlerts = alerts.filter(a => !['Memory', 'Load'].includes(a.type));
+    
     const newAlerts = [];
     const memUsage = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
     if (memUsage > 90) newAlerts.push({ type: 'Memory', message: `Critical: ${memUsage.toFixed(1)}%`, severity: 'danger' });
     const load = os.loadavg()[0];
     if (load > os.cpus().length * 0.9) newAlerts.push({ type: 'Load', message: `High: ${load.toFixed(2)}`, severity: 'danger' });
-    alerts = newAlerts;
+    
+    alerts = [...persistentAlerts, ...newAlerts];
 }
 setInterval(evaluateAlerts, 30000);
 evaluateAlerts();

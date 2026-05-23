@@ -48,9 +48,18 @@ Proving the AI isn't a "Black Box" for academic and professional review.
    cd aidash
    ```
 2. **Start the Optimized Container**:
-   ```bash
-   docker-compose up -d --build
-   ```
+   - **Linux (Full Hardware Access)**:
+     ```bash
+     docker-compose up -d --build
+     ```
+   - **macOS (Simulation Mode)**:
+     ```bash
+     docker-compose -f docker-compose.macos.yml up -d --build
+     ```
+   - **Windows (Simulation Mode)**:
+     ```bash
+     docker-compose -f docker-compose.windows.yml up -d --build
+     ```
 
 ## 📝 Technical Specs
 - **Backend**: Node.js 20 (Alpine)

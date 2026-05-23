@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  aidash:
+    build: .
+    container_name: aidash-os
+    restart: always
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/app/config
+      - ./backend/users.json:/app/backend/users.json
+      - ./server.log:/app/server.log
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Note: Hardware-level WiFi/DBus mounts removed for Windows compatibility
+      # File explorer /host mount removed to prevent path resolution issues across OS layers
+    privileged: true
+    # network_mode: "host" is not supported on Windows, using port mapping
+    ipc: host
