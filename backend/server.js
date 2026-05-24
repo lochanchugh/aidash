@@ -36,16 +36,20 @@ function getCommandNovelty(cmd) {
     const patterns = getPatterns();
     const hour = new Date().getHours();
     const baseCmd = cmd.split(' ')[0];
-    
-    if (!patterns[baseCmd]) return 100; // Totally new command
-    
-    const hCount = patterns[baseCmd].hours[hour] || 0;
-    const prob = hCount / patterns[baseCmd].count;
-    
-    if (prob < 0.1) return 80; // Rare hour for this command
-    return 0; // Familiar pattern
-}
 
+    if (!patterns[baseCmd]) return 100; // Totally new command
+
+    const hCount = patterns[baseCmd].hours[hour] || 0;
+    const count = patterns[baseCmd].count;
+
+    // Only flag as unusual hour if we have enough data (at least 10 times)
+    // and the probability of this hour is extremely low (< 5%).
+    if (count >= 10 && (hCount / count) < 0.05) {
+        return 80; // Rare hour for this command
+    }
+
+    return 0; // Familiar pattern or insufficient data
+}
 function getConfig() {
     if (fs.existsSync(CONFIG_PATH)) return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
     return { modules: { alerts: true, ai: true, logs: true, disk: true, files: true } };

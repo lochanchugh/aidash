@@ -5,8 +5,8 @@
 - **Tagline**: "The high-performance, AI-native operating environment for headless edge servers."
 - **B.Tech Thesis Goal**: Distributed, Autonomous Resource Management & Explainable Security AI.
 - **Key Metrics**:
-    - **RAM Usage**: Target <15MB | **Current ~18.9MB**
-    - **Image Size**: Target <30MB | **Current ~78MB** (Optimizing)
+    - **RAM Usage**: Target <20MB | **Current ~9.6MB** (Goal Exceeded)
+    - **Image Size**: Target <100MB | **Current ~80MB** (Goal Reached)
     - **Source Footprint**: ~5.0MB (including logs)
 
 ## Technical Foundation (Optimized for Thesis)
